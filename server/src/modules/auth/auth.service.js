@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../../config/database');
+const { prepare } = require('../../config/database');
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../../config/env');
 
 function generateToken(user) {
@@ -24,7 +24,7 @@ function mapUser(row) {
   };
 }
 
-function register({ name, email, password, instagram_handle }) {
+async function register({ name, email, password, instagram_handle }) {
   if (!name || !email || !password) {
     const err = new Error('Nome, e-mail e senha são obrigatórios.');
     err.status = 400;
@@ -37,7 +37,7 @@ function register({ name, email, password, instagram_handle }) {
     throw err;
   }
 
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase().trim());
+  const existing = await prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase().trim());
   if (existing) {
     const err = new Error('E-mail já cadastrado.');
     err.status = 409;
@@ -45,23 +45,23 @@ function register({ name, email, password, instagram_handle }) {
   }
 
   const password_hash = bcrypt.hashSync(password, 10);
-  const result = db.prepare(
+  const result = await prepare(
     'INSERT INTO users (name, email, password_hash, instagram_handle, role) VALUES (?, ?, ?, ?, ?)'
   ).run(name.trim(), email.toLowerCase().trim(), password_hash, instagram_handle || null, 'mentorada');
 
-  const row = db.prepare('SELECT id, name, email, instagram_handle, profile_photo, role, created_at FROM users WHERE id = ?').get(result.lastInsertRowid);
+  const row = await prepare('SELECT id, name, email, instagram_handle, profile_photo, role, created_at FROM users WHERE id = ?').get(result.lastInsertRowid);
   const token = generateToken(row);
   return { token, user: mapUser(row) };
 }
 
-function login({ email, password }) {
+async function login({ email, password }) {
   if (!email || !password) {
     const err = new Error('email e password são obrigatórios.');
     err.status = 400;
     throw err;
   }
 
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim());
+  const user = await prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim());
   if (!user) {
     const err = new Error('Credenciais inválidas.');
     err.status = 401;
@@ -79,8 +79,8 @@ function login({ email, password }) {
   return { token, user: mapUser(user) };
 }
 
-function me(userId) {
-  const row = db.prepare(
+async function me(userId) {
+  const row = await prepare(
     'SELECT id, name, email, instagram_handle, profile_photo, role, created_at FROM users WHERE id = ?'
   ).get(userId);
   if (!row) {

@@ -1,29 +1,27 @@
 const monthlyService = require('./monthly.service');
 const { sanitizeMonthlyData } = require('../../utils/formatters');
 
-function getHistory(req, res, next) {
+async function getHistory(req, res, next) {
   try {
-    const rows = monthlyService.getHistory(req.user.id);
+    const rows = await monthlyService.getHistory(req.user.id);
     res.json(rows.map(sanitizeMonthlyData));
   } catch (err) {
     next(err);
   }
 }
 
-function getByMonth(req, res, next) {
+async function getByMonth(req, res, next) {
   try {
-    const row = monthlyService.getByMonth(req.user.id, req.params.month);
-    // Mentorada vê seus próprios dados incluindo revenue
+    const row = await monthlyService.getByMonth(req.user.id, req.params.month);
     res.json(row);
   } catch (err) {
     next(err);
   }
 }
 
-function upsertMonth(req, res, next) {
+async function upsertMonth(req, res, next) {
   try {
-    const row = monthlyService.upsertMonth(req.user.id, req.params.month, req.body);
-    // Usuário pode ver seu próprio revenue ao enviar dados
+    const row = await monthlyService.upsertMonth(req.user.id, req.params.month, req.body);
     const { revenue, revenue_previous, ...safe } = row;
     res.json({ ...safe, revenue, revenue_previous });
   } catch (err) {
@@ -31,12 +29,12 @@ function upsertMonth(req, res, next) {
   }
 }
 
-function uploadProof(req, res, next) {
+async function uploadProof(req, res, next) {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
     }
-    const row = monthlyService.updateProof(req.user.id, req.params.month, req.file.filename);
+    const row = await monthlyService.updateProof(req.user.id, req.params.month, req.file.filename);
     res.json({ message: 'Comprovante enviado com sucesso.', data: sanitizeMonthlyData(row) });
   } catch (err) {
     next(err);

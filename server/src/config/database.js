@@ -1,25 +1,57 @@
-const Database = require('better-sqlite3');
+const { createClient } = require('@libsql/client');
 const path = require('path');
 const fs = require('fs');
 
-let dbPath = process.env.DB_PATH
-  ? path.resolve(process.env.DB_PATH)
-  : path.join(__dirname, '../../data/mentoria.db');
+let client;
 
-const dataDir = path.dirname(dbPath);
-if (!fs.existsSync(dataDir)) {
-  try {
-    fs.mkdirSync(dataDir, { recursive: true });
-  } catch (e) {
-    // Fallback para diretório local se não tiver permissão (ex: Render free plan)
-    dbPath = path.join(__dirname, '../../data/mentoria.db');
-    const localDir = path.dirname(dbPath);
-    if (!fs.existsSync(localDir)) fs.mkdirSync(localDir, { recursive: true });
-  }
+if (process.env.TURSO_DATABASE_URL) {
+  client = createClient({
+    url: process.env.TURSO_DATABASE_URL,
+    authToken: process.env.TURSO_AUTH_TOKEN,
+  });
+} else {
+  const dbPath = path.join(__dirname, '../../data/mentoria.db');
+  const dir = path.dirname(dbPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  client = createClient({ url: `file:${dbPath}` });
 }
 
-const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+function convertRow(row) {
+  if (!row) return null;
+  const obj = {};
+  for (const [key, val] of Object.entries(row)) {
+    obj[key] = typeof val === 'bigint' ? Number(val) : val;
+  }
+  return obj;
+}
 
-module.exports = db;
+function flattenArgs(args) {
+  if (args.length === 1 && Array.isArray(args[0])) return args[0];
+  return args;
+}
+
+function prepare(sql) {
+  return {
+    async all(...args) {
+      const result = await client.execute({ sql, args: flattenArgs(args) });
+      return result.rows.map(convertRow);
+    },
+    async get(...args) {
+      const result = await client.execute({ sql, args: flattenArgs(args) });
+      return convertRow(result.rows[0]) || null;
+    },
+    async run(...args) {
+      const result = await client.execute({ sql, args: flattenArgs(args) });
+      return {
+        lastInsertRowid: result.lastInsertRowid ? Number(result.lastInsertRowid) : null,
+        changes: result.rowsAffected,
+      };
+    },
+  };
+}
+
+async function execRaw(sql) {
+  await client.execute(sql);
+}
+
+module.exports = { prepare, execRaw };

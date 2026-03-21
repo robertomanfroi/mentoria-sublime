@@ -1,8 +1,8 @@
 const prizesService = require('./prizes.service');
 
-function getPrizes(req, res, next) {
+async function getPrizes(req, res, next) {
   try {
-    const prizes = prizesService.getActivePrizes();
+    const prizes = await prizesService.getActivePrizes();
     res.json(prizes);
   } catch (err) {
     next(err);
