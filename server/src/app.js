@@ -35,7 +35,10 @@ const uploadsRoot = process.env.UPLOADS_PATH
 app.use('/uploads', express.static(uploadsRoot));
 
 // ─── Frontend em produção ─────────────────────────────────────────────────────
-const clientBuild = path.join(__dirname, '../../client/dist');
+// Suporta estrutura local (../../client/dist) e deploy na raiz (../../client/dist ou ../public)
+const clientBuild = process.env.CLIENT_BUILD_PATH
+  ? path.resolve(process.env.CLIENT_BUILD_PATH)
+  : path.join(__dirname, '../../client/dist');
 const fs = require('fs');
 if (fs.existsSync(clientBuild)) {
   app.use(express.static(clientBuild));

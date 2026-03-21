@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: mentoria-sublime
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DB_PATH
+        value: /data/mentoria.db
+      - key: UPLOADS_PATH
+        value: /data/uploads
+      - key: JWT_SECRET
+        generateValue: true
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
