@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS prizes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  position INTEGER NOT NULL,
+  title TEXT,
+  description TEXT,
+  active INTEGER DEFAULT 1
+);
