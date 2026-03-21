@@ -88,7 +88,7 @@ export default function PrizesAdminPage() {
   const fn = useCallback(() => prizesApi.getPrizes(), [])
   const { data, loading, refetch } = useApi(fn)
 
-  const prizes = data?.prizes || []
+  const prizes = Array.isArray(data) ? data : (data?.prizes || [])
 
   if (loading) return <LoadingSpinner centered />
 

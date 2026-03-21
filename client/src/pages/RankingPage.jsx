@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react'
-import { ChevronDown, Info } from 'lucide-react'
+import { ChevronDown, Info, Trophy, Medal, Award } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useApi } from '../hooks/useApi'
-import { rankingApi } from '../lib/api'
+import { rankingApi, prizesApi } from '../lib/api'
 import {
   getCurrentMonth,
   getLastNMonths,
@@ -11,6 +11,7 @@ import {
 import PodiumCard from '../components/ranking/PodiumCard'
 import RankingRow from '../components/ranking/RankingRow'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
+import Card from '../components/ui/Card'
 
 const months = getLastNMonths(6)
 
@@ -20,6 +21,13 @@ export default function RankingPage() {
 
   const fn = useCallback(() => rankingApi.getRanking(selectedMonth), [selectedMonth])
   const { data, loading } = useApi(fn)
+
+  const prizesFn = useCallback(() => prizesApi.getPrizes(), [])
+  const { data: prizesData } = useApi(prizesFn)
+  const prizes = Array.isArray(prizesData) ? prizesData : []
+
+  const prizeIcons = { 1: Trophy, 2: Medal, 3: Award }
+  const prizeColors = { 1: 'text-gold', 2: 'text-slate-400', 3: 'text-amber-700' }
 
   const entries = Array.isArray(data) ? data : (data?.ranking || [])
   const top3 = entries.slice(0, 3)
@@ -57,6 +65,37 @@ export default function RankingPage() {
           As estrelas indicam desempenho em checklist, crescimento de seguidores e faturamento.
         </p>
       </div>
+
+      {/* Premiação */}
+      {prizes.length > 0 && (
+        <Card className="animate-fade-in-up-delay-1">
+          <h2 className="font-display text-base font-semibold text-dark mb-4">
+            🏆 Premiação
+          </h2>
+          <div className="space-y-3">
+            {prizes.map((prize) => {
+              const Icon = prizeIcons[prize.position]
+              const color = prizeColors[prize.position]
+              const labels = { 1: '1º Lugar', 2: '2º Lugar', 3: '3º Lugar' }
+              return (
+                <div key={prize.id} className="flex items-start gap-3">
+                  {Icon && <Icon size={18} className={`${color} flex-shrink-0 mt-0.5`} />}
+                  <div>
+                    <p className="text-sm font-body font-semibold text-dark">
+                      {labels[prize.position]} — {prize.title}
+                    </p>
+                    {prize.description && (
+                      <p className="text-xs font-body text-dark/50 mt-0.5">
+                        {prize.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {loading ? (
         <LoadingSpinner centered />
