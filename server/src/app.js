@@ -40,6 +40,8 @@ const clientBuild = process.env.CLIENT_BUILD_PATH
   ? path.resolve(process.env.CLIENT_BUILD_PATH)
   : path.join(__dirname, '../../client/dist');
 const fs = require('fs');
+console.log(`[app] Procurando frontend em: ${clientBuild}`);
+console.log(`[app] Existe? ${fs.existsSync(clientBuild)}`);
 if (fs.existsSync(clientBuild)) {
   app.use(express.static(clientBuild));
 }
