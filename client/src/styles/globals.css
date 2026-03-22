@@ -2,17 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── FONTES LOCAIS ─────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Bride';
+  src: url('/brand/fonts/Bride-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Bride';
+  src: url('/brand/fonts/Bride-Italic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Bride';
+  src: url('/brand/fonts/Bride-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/brand/fonts/Montserrat-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/brand/fonts/Montserrat-Italic-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ─── BASE ──────────────────────────────────────────────────────────────────── */
 @layer base {
   body {
-    font-family: 'DM Sans', sans-serif;
-    background-color: #FDFAF6;
-    color: #2D2D2D;
+    font-family: 'Montserrat', sans-serif;
+    background-color: #f4f1e6;
+    color: #2d2d2d;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3 {
-    font-family: 'Playfair Display', serif;
+  h1, h2, h3, h4 {
+    font-family: 'Bride', serif;
+    letter-spacing: 0.01em;
   }
 
   * {
@@ -20,22 +63,32 @@
   }
 }
 
+/* ─── GRADIENTES E UTILITÁRIOS DE MARCA ─────────────────────────────────────── */
 @layer utilities {
   .gold-gradient {
-    background: linear-gradient(90deg, #C9A84C, #E8D5C4, #C9A84C);
+    background: linear-gradient(90deg, #8e7028, #ab9051, #f2ea9c, #ab9051, #8e7028);
   }
 
   .gold-text-gradient {
-    background: linear-gradient(135deg, #C9A84C, #e8c97a, #C9A84C);
+    background: linear-gradient(135deg, #8e7028, #f2ea9c, #8e7028);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .nude-gradient {
-    background: linear-gradient(135deg, #F5E6D3, #E8D5C4);
+    background: linear-gradient(135deg, #f4f1e6, #e8dfd0);
   }
 
+  .brand-bg {
+    background-color: #2d2d2d;
+  }
+
+  .brand-cream {
+    background-color: #f4f1e6;
+  }
+
+  /* Animações */
   .animate-fade-in-up {
     animation: fadeInUp 0.4s ease-out forwards;
   }
@@ -61,52 +114,33 @@
   }
 }
 
+/* ─── KEYFRAMES ─────────────────────────────────────────────────────────────── */
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
+  0%   { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
 
 @keyframes progressFill {
   from { width: 0%; }
-  to { width: var(--progress-width, 0%); }
+  to   { width: var(--progress-width, 0%); }
 }
 
-/* Scrollbar customizada */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+/* ─── SCROLLBAR ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: #f4f1e6; }
+::-webkit-scrollbar-thumb  { background: #bda788; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #8e7028; }
 
-::-webkit-scrollbar-track {
-  background: #F5E6D3;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #C9A84C;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a8893d;
-}
-
-/* Progress bar animada */
+/* ─── UTILITÁRIOS ───────────────────────────────────────────────────────────── */
 .progress-bar-fill {
   animation: progressFill 0.8s ease-out forwards;
 }
 
-/* Checkbox animado */
 .checkbox-animated {
   transition: all 0.2s ease-out;
 }
@@ -116,7 +150,7 @@
 }
 
 @keyframes checkPop {
-  0% { transform: scale(0.8); }
-  50% { transform: scale(1.2); }
+  0%   { transform: scale(0.8); }
+  50%  { transform: scale(1.2); }
   100% { transform: scale(1); }
 }

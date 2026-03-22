@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
   CheckSquare,
@@ -13,7 +13,6 @@ import {
   Download,
   Menu,
   X,
-  Sparkles,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useAuth } from '../../hooks/useAuth'
@@ -44,8 +43,8 @@ function NavItem({ to, icon: Icon, label, onClick }) {
         cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-xl font-body text-sm transition-all duration-200',
           isActive
-            ? 'bg-gold/10 text-gold font-medium'
-            : 'text-dark/60 hover:bg-nude-light hover:text-dark'
+            ? 'bg-gold-dark/10 text-gold-dark font-semibold'
+            : 'text-dark/60 hover:bg-nude-medium hover:text-dark'
         )
       }
     >
@@ -62,18 +61,12 @@ export default function Sidebar() {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="px-4 py-6 border-b border-nude-medium/40">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gold flex items-center justify-center">
-            <Sparkles size={16} className="text-white" />
-          </div>
-          <div>
-            <h1 className="font-display font-bold text-dark text-base leading-tight">
-              Mentoria
-            </h1>
-            <p className="text-xs font-body text-dark/50">Sublime</p>
-          </div>
-        </div>
+      <div className="px-4 py-5 border-b border-nude-medium/40 flex items-center justify-center">
+        <img
+          src="/brand/logos/logo-horizontal.svg"
+          alt="Mentoria Sublime"
+          className="h-14 w-auto object-contain"
+        />
       </div>
 
       {/* Nav principal */}
@@ -132,7 +125,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-60 flex-col bg-white border-r border-nude-medium/40 h-screen sticky top-0 flex-shrink-0">
+      <aside className="hidden lg:flex w-60 flex-col bg-nude-light border-r border-nude-medium/60 h-screen sticky top-0 flex-shrink-0">
         {sidebarContent}
       </aside>
 
@@ -155,7 +148,7 @@ export default function Sidebar() {
       {/* Mobile sidebar */}
       <aside
         className={cn(
-          'lg:hidden fixed top-0 left-0 z-50 h-full w-64 bg-white shadow-card',
+          'lg:hidden fixed top-0 left-0 z-50 h-full w-64 bg-nude-light shadow-card',
           'transition-transform duration-300',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}

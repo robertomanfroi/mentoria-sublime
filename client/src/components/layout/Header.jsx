@@ -20,7 +20,7 @@ export default function Header({ title }) {
   }, [])
 
   return (
-    <header className="h-16 bg-white border-b border-nude-medium/40 flex items-center justify-between px-6 flex-shrink-0">
+    <header className="h-16 bg-nude-light border-b border-nude-medium/60 flex items-center justify-between px-6 flex-shrink-0">
       {/* Título da página */}
       <h2 className="font-display text-xl font-semibold text-dark">
         {title}
@@ -30,7 +30,7 @@ export default function Header({ title }) {
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-nude-light transition-colors"
+          className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-nude-medium transition-colors"
         >
           <Avatar
             src={user?.avatar_url}

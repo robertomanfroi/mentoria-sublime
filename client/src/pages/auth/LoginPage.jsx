@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Mail, Lock, Sparkles } from 'lucide-react'
+import { Mail, Lock } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -25,63 +25,63 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     try {
       await login(form.email, form.password)
       navigate(from, { replace: true })
     } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-          'E-mail ou senha incorretos. Tente novamente.'
-      )
+      setError(err?.response?.data?.message || 'E-mail ou senha incorretos. Tente novamente.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex bg-offwhite">
-      {/* Painel esquerdo decorativo */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-gold/20 via-nude-light to-nude-medium flex-col items-center justify-center p-12">
-        <div className="max-w-md text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gold flex items-center justify-center mx-auto mb-6 shadow-[0_8px_24px_rgba(201,168,76,0.3)]">
-            <Sparkles size={28} className="text-white" />
-          </div>
-          <h1 className="font-display text-4xl font-bold text-dark mb-4 leading-tight">
-            Mentoria<br />
-            <span className="gold-text-gradient">Sublime</span>
-          </h1>
-          <p className="font-body text-dark/60 text-lg leading-relaxed">
+    <div className="min-h-screen flex bg-cream">
+      {/* Painel esquerdo — identidade visual da marca */}
+      <div className="hidden lg:flex lg:w-1/2 bg-dark flex-col items-center justify-center p-12 relative overflow-hidden">
+        {/* Ornamento de fundo */}
+        <div className="absolute inset-0 opacity-5"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 30% 70%, #f2ea9c 0%, transparent 50%), radial-gradient(circle at 70% 30%, #bda788 0%, transparent 50%)',
+          }}
+        />
+        <div className="relative z-10 max-w-md text-center flex flex-col items-center gap-8">
+          {/* Logo principal */}
+          <img
+            src="/brand/logos/logo-principal.svg"
+            alt="Mentoria Sublime"
+            className="w-56 h-56 object-contain"
+          />
+          <p className="font-body text-cream/70 text-base leading-relaxed max-w-xs">
             Acompanhe sua evolução, conecte-se com outras mulheres e celebre cada conquista juntas.
           </p>
-          <div className="mt-10 flex flex-col items-center gap-3">
-            <div className="flex gap-2">
-              {['✦', '✦', '✦'].map((s, i) => (
-                <span key={i} className="text-gold text-lg opacity-60" style={{ animationDelay: `${i * 200}ms` }}>{s}</span>
-              ))}
-            </div>
-            <p className="text-sm font-body text-dark/40 italic">
-              Sua jornada começa aqui.
-            </p>
+          <div className="flex gap-3 opacity-50">
+            {['✦', '✦', '✦'].map((s, i) => (
+              <span key={i} className="text-gold text-base">{s}</span>
+            ))}
           </div>
+          <p className="text-sm font-body text-cream/40 italic tracking-wide">
+            Sua jornada começa aqui.
+          </p>
         </div>
       </div>
 
       {/* Painel direito: formulário */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 bg-cream">
         <div className="w-full max-w-sm animate-fade-in-up">
           {/* Logo mobile */}
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-9 h-9 rounded-xl bg-gold flex items-center justify-center">
-              <Sparkles size={18} className="text-white" />
-            </div>
-            <span className="font-display text-xl font-bold text-dark">Mentoria Sublime</span>
+          <div className="lg:hidden flex justify-center mb-8">
+            <img
+              src="/brand/logos/logo-principal.svg"
+              alt="Mentoria Sublime"
+              className="h-28 w-auto object-contain"
+            />
           </div>
 
           <h2 className="font-display text-3xl font-semibold text-dark mb-1">
             Bem-vinda de volta
           </h2>
-          <p className="font-body text-dark/50 mb-8">
+          <p className="font-body text-dark/50 mb-8 text-sm">
             Entre na sua conta para continuar sua jornada.
           </p>
 
@@ -96,7 +96,6 @@ export default function LoginPage() {
               required
               autoComplete="email"
             />
-
             <Input
               label="Senha"
               type="password"
@@ -114,23 +113,14 @@ export default function LoginPage() {
               </div>
             )}
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              loading={loading}
-              className="w-full"
-            >
+            <Button type="submit" variant="primary" size="lg" loading={loading} className="w-full">
               Entrar
             </Button>
           </form>
 
           <p className="mt-6 text-center text-sm font-body text-dark/50">
             Ainda não tem conta?{' '}
-            <Link
-              to="/register"
-              className="text-gold font-medium hover:underline"
-            >
+            <Link to="/register" className="text-gold-dark font-semibold hover:underline">
               Cadastre-se
             </Link>
           </p>
