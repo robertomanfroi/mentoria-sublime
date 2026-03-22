@@ -3,9 +3,9 @@ import LoadingSpinner from './LoadingSpinner'
 
 const variants = {
   primary:
-    'bg-gold text-white hover:bg-amber-600 focus:ring-gold/40 shadow-sm',
+    'bg-dark text-cream hover:bg-[#5c4f46] focus:ring-dark/30 shadow-sm',
   ghost:
-    'bg-transparent text-gold border border-gold hover:bg-gold/10 focus:ring-gold/30',
+    'bg-transparent text-dark border border-bronze hover:bg-bronze/10 focus:ring-bronze/30',
   danger:
     'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400/40 shadow-sm',
   secondary:
