@@ -5,21 +5,26 @@ import { checklistApi } from '../lib/api'
 import ProgressBar from '../components/ui/ProgressBar'
 import StageAccordion from '../components/checklist/StageAccordion'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
-import Button from '../components/ui/Button'
+
+/* ─── Paleta oficial ──────────────────────────────────────────────────── */
+const GOLD      = '#C7AA89'
+const GOLD_DARK = '#8e7028'
+const BROWN     = '#3D281C'
+const MID       = '#604E44'
+const CREAM     = '#F6F2E7'
+const BEIGE     = '#D8D1C1'
+const DARK      = '#292929'
 
 export default function ChecklistPage() {
   const fn = useCallback(() => checklistApi.getItems(), [])
   const { data, loading, error, setData } = useApi(fn)
-
   const [forceOpen, setForceOpen] = useState(undefined)
 
-  // Agrupar itens por etapa (stage é string vinda da API)
   const stages = useMemo(() => {
     if (!data) return []
-    const stagesMap = {}
+    const stagesMap   = {}
     const stagesOrder = []
-
-    ;(data.items || data || []).forEach((item) => {
+    ;(data.items || data || []).forEach(item => {
       const stageName = item.stage || 'Sem Etapa'
       if (!stagesMap[stageName]) {
         stagesOrder.push(stageName)
@@ -30,25 +35,18 @@ export default function ChecklistPage() {
       }
       stagesMap[stageName].items.push(item)
     })
-
-    return stagesOrder.map((name) => stagesMap[name])
+    return stagesOrder.map(name => stagesMap[name])
   }, [data])
 
-  // Calcular totais
-  const totalItems = stages.reduce((acc, s) => acc + s.items.length, 0)
-  const completedItems = stages.reduce(
-    (acc, s) => acc + s.items.filter((i) => i.completed).length,
-    0
-  )
-  const pct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
+  const totalItems     = stages.reduce((acc, s) => acc + s.items.length, 0)
+  const completedItems = stages.reduce((acc, s) => acc + s.items.filter(i => i.completed).length, 0)
+  const pct            = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
 
   function handleItemToggle(itemId, newState) {
-    setData((prev) => {
+    setData(prev => {
       if (!prev) return prev
-      const items = prev.items || prev
-      const updated = items.map((item) =>
-        item.id === itemId ? { ...item, completed: newState } : item
-      )
+      const items   = prev.items || prev
+      const updated = items.map(item => item.id === itemId ? { ...item, completed: newState } : item)
       return prev.items ? { ...prev, items: updated } : updated
     })
   }
@@ -64,62 +62,101 @@ export default function ChecklistPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
-      {/* Header com progresso geral */}
-      <div className="bg-white rounded-2xl p-5 border border-nude-medium/40 shadow-soft animate-fade-in-up">
-        <div className="flex items-center justify-between mb-3">
+    <div
+      className="max-w-2xl mx-auto space-y-5"
+      style={{ fontFamily: 'Montserrat, sans-serif' }}
+    >
+      {/* ── Header com progresso geral ────────────────────────────── */}
+      <div
+        className="rounded-2xl p-6 animate-fade-in-up"
+        style={{
+          background: 'linear-gradient(160deg, rgba(199,170,137,0.08) 0%, #ffffff 70%)',
+          border: `1px solid rgba(199,170,137,0.20)`,
+          boxShadow: '0 2px 12px rgba(199,170,137,0.10)',
+        }}
+      >
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="font-display text-xl font-semibold text-dark">
+            <h2
+              className="font-display font-semibold leading-tight"
+              style={{ fontFamily: 'Bride, Georgia, serif', fontSize: '20px', color: BROWN }}
+            >
               Meu Checklist
             </h2>
-            <p className="text-sm font-body text-dark/50 mt-0.5">
+            <p className="font-body mt-0.5" style={{ fontSize: '12px', color: `${MID}80` }}>
               {completedItems} de {totalItems} itens concluídos
             </p>
           </div>
-          <span className="font-display text-2xl font-bold text-gold">
+          <span
+            className="font-display font-bold"
+            style={{ fontFamily: 'Bride, Georgia, serif', fontSize: '28px', color: GOLD_DARK }}
+          >
             {pct}%
           </span>
         </div>
+
         <ProgressBar value={pct} showPercent={false} size="lg" />
 
-        {/* Status da estrela */}
-        <div className="mt-3 flex gap-4 text-xs font-body">
-          <span className={pct >= 25 ? 'text-gold font-medium' : 'text-dark/40'}>
-            ⭐ 25% — Estrela bege
-          </span>
-          <span className={pct >= 60 ? 'text-gold font-medium' : 'text-dark/40'}>
-            🌟 60% — Estrela dourada
-          </span>
+        {/* Status das estrelas */}
+        <div className="mt-4 flex gap-5 text-xs font-body">
+          <div
+            className="flex items-center gap-1.5"
+            style={{ color: pct >= 25 ? GOLD_DARK : `${DARK}35` }}
+          >
+            <span>⭐</span>
+            <span style={{ fontWeight: pct >= 25 ? '600' : '400' }}>
+              25% — Estrela bege
+            </span>
+          </div>
+          <div
+            className="flex items-center gap-1.5"
+            style={{ color: pct >= 60 ? GOLD_DARK : `${DARK}35` }}
+          >
+            <span>🌟</span>
+            <span style={{ fontWeight: pct >= 60 ? '600' : '400' }}>
+              60% — Estrela dourada
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Controles */}
+      {/* ── Controles ─────────────────────────────────────────────── */}
       <div className="flex gap-2 animate-fade-in-up-delay-1">
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={() => setForceOpen(true)}
-          className="gap-1.5"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-body text-sm transition-all duration-200"
+          style={{
+            background: 'transparent',
+            border: `1px solid ${GOLD}`,
+            color: MID,
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(199,170,137,0.08)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
-          <ChevronsDown size={15} />
+          <ChevronsDown size={14} />
           Expandir todos
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
+        </button>
+        <button
           onClick={() => setForceOpen(false)}
-          className="gap-1.5"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-body text-sm transition-all duration-200"
+          style={{
+            background: 'transparent',
+            border: `1px solid ${GOLD}`,
+            color: MID,
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(199,170,137,0.08)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
-          <ChevronsUp size={15} />
+          <ChevronsUp size={14} />
           Recolher todos
-        </Button>
+        </button>
       </div>
 
-      {/* Acordeões por etapa */}
+      {/* ── Acordeões ─────────────────────────────────────────────── */}
       <div className="space-y-3">
         {stages.length === 0 ? (
           <div className="text-center py-12">
-            <p className="font-body text-dark/40">
+            <p className="font-body" style={{ color: `${DARK}40` }}>
               Nenhum item no checklist ainda.
             </p>
           </div>
