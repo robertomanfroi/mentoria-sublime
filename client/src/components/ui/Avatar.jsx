@@ -22,7 +22,7 @@ export default function Avatar({
     <div
       className={cn(
         'relative inline-flex items-center justify-center rounded-full overflow-hidden',
-        'bg-nude-medium font-display font-semibold text-gold select-none flex-shrink-0',
+        'bg-beige font-display font-semibold text-gold select-none flex-shrink-0',
         sizes[size] || sizes.md,
         gold && 'ring-2 ring-gold ring-offset-1',
         pulse && 'animate-pulse-gold',

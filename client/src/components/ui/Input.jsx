@@ -39,7 +39,7 @@ export default function Input({
             IconRight && 'pr-10',
             error
               ? 'border-red-400 focus:border-red-400 focus:ring-red-300/30'
-              : 'border-nude-medium focus:border-gold focus:ring-gold/20',
+              : 'border-beige focus:border-gold focus:ring-gold/25',
             className
           )}
           placeholder={label}

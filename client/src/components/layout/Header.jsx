@@ -53,7 +53,7 @@ export default function Header({ title }) {
               {user?.name}
             </p>
             {user?.instagram && (
-              <p className="text-[11px] font-body" style={{ color: '#bda788' }}>
+              <p className="text-[11px] font-body" style={{ color: '#C7AA89' }}>
                 @{user.instagram}
               </p>
             )}
@@ -90,7 +90,7 @@ export default function Header({ title }) {
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(45,45,45,0.04)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <Settings size={14} style={{ color: '#bda788' }} />
+                <Settings size={14} style={{ color: '#C7AA89' }} />
                 Meu perfil
               </button>
 

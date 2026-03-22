@@ -10,7 +10,7 @@ const positionConfig = {
     cardClass: 'order-2 scale-105',
     wrapClass: 'z-10',
     avatarSize: '2xl',
-    bgClass: 'bg-gradient-to-b from-gold/10 to-nude-light border-gold/50',
+    bgClass: 'bg-gradient-to-b from-gold/10 to-cream border-gold/50',
     badgeClass: 'bg-gradient-to-br from-gold to-amber-400 text-white',
     badgeIcon: Crown,
   },

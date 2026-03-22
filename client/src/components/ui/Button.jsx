@@ -3,15 +3,15 @@ import LoadingSpinner from './LoadingSpinner'
 
 const variants = {
   primary:
-    'bg-dark text-cream hover:bg-[#5c4f46] focus:ring-dark/30 shadow-sm',
+    'bg-brown text-cream hover:bg-mid focus:ring-brown/30 shadow-sm',
   ghost:
-    'bg-transparent text-dark border border-bronze hover:bg-bronze/10 focus:ring-bronze/30',
+    'bg-transparent text-dark border border-gold hover:bg-gold/10 focus:ring-gold/30',
   danger:
     'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400/40 shadow-sm',
   secondary:
-    'bg-nude-light text-dark border border-nude-medium hover:bg-nude-medium focus:ring-nude-medium/40',
+    'bg-cream text-dark border border-beige hover:bg-beige focus:ring-beige/40',
   nude:
-    'bg-nude-light text-dark hover:bg-nude-medium focus:ring-nude-medium/30',
+    'bg-cream text-dark hover:bg-beige focus:ring-beige/30',
 }
 
 const sizes = {

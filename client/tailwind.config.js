@@ -4,21 +4,25 @@ module.exports = {
     extend: {
       colors: {
         // Paleta oficial Mentoria Sublime
+        dark:    '#292929',
+        brown:   '#3D281C',
+        mid:     '#604E44',
         gold: {
-          DEFAULT: '#bda788',
+          DEFAULT: '#C7AA89',
           light:   '#f2ea9c',
           mid:     '#ab9051',
           dark:    '#8e7028',
         },
+        beige:   '#D8D1C1',
+        cream:   '#F6F2E7',
+        // Mantidos para compatibilidade
         nude: {
-          light:  '#f4f1e6',
-          medium: '#e8dfd0',
-          dark:   '#d4c9b8',
+          light:  '#F6F2E7',
+          medium: '#D8D1C1',
+          dark:   '#C7AA89',
         },
-        dark:     '#2d2d2d',
-        bronze:   '#bda788',
-        cream:    '#f4f1e6',
-        offwhite: '#fdfcf8',
+        bronze:   '#C7AA89',
+        offwhite: '#FFFFFF',
         // Mantidos para compatibilidade
         rose: '#D4A0A0',
         sage: '#7BAE7F',
@@ -28,9 +32,9 @@ module.exports = {
         body:    ['Montserrat', 'sans-serif'],
       },
       boxShadow: {
-        soft: '0 2px 12px rgba(45,45,45,0.06)',
-        card: '0 4px 24px rgba(45,45,45,0.08)',
-        gold: '0 0 0 2px #bda788',
+        soft: '0 2px 12px rgba(41,41,41,0.06)',
+        card: '0 4px 24px rgba(41,41,41,0.08)',
+        gold: '0 0 0 2px #C7AA89',
       },
       keyframes: {
         fadeInUp: {
@@ -42,8 +46,8 @@ module.exports = {
           '100%': { transform: 'translateX(100%)' },
         },
         pulse_gold: {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(189,167,136,0.4)' },
-          '50%':      { boxShadow: '0 0 0 8px rgba(189,167,136,0)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(199,170,137,0.4)' },
+          '50%':      { boxShadow: '0 0 0 8px rgba(199,170,137,0)' },
         },
         progress: {
           from: { width: '0%' },

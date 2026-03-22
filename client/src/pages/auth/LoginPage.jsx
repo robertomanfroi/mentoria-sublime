@@ -40,7 +40,7 @@ export default function LoginPage() {
       {/* ── Painel esquerdo — identidade da marca ──────── */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center relative overflow-hidden"
-        style={{ background: '#2d2d2d' }}
+        style={{ background: '#3D281C' }}
       >
         {/* Texture overlay — grain sutil */}
         <div
@@ -73,9 +73,9 @@ export default function LoginPage() {
 
           {/* Linha ornamental dourada */}
           <div className="flex items-center gap-3 w-full">
-            <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(189,167,136,0.4))' }} />
-            <span style={{ color: 'rgba(189,167,136,0.5)', fontSize: '10px' }}>✦</span>
-            <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(189,167,136,0.4), transparent)' }} />
+            <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(199,170,137,0.4))' }} />
+            <span style={{ color: 'rgba(199,170,137,0.5)', fontSize: '10px' }}>✦</span>
+            <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(199,170,137,0.4), transparent)' }} />
           </div>
 
           {/* Tagline */}
@@ -84,7 +84,7 @@ export default function LoginPage() {
             style={{
               fontFamily: 'Bride, Georgia, serif',
               fontStyle: 'italic',
-              color: 'rgba(244,241,230,0.65)',
+              color: 'rgba(246,242,231,0.65)',
               letterSpacing: '0.02em',
             }}
           >
@@ -94,7 +94,7 @@ export default function LoginPage() {
           {/* Detalhe tipográfico */}
           <p
             className="text-[10px] tracking-[0.28em] uppercase"
-            style={{ color: 'rgba(189,167,136,0.4)' }}
+            style={{ color: 'rgba(199,170,137,0.4)' }}
           >
             Sua jornada começa aqui
           </p>
@@ -103,7 +103,7 @@ export default function LoginPage() {
         {/* Detalhe de canto */}
         <div
           className="absolute bottom-6 left-0 right-0 text-center text-[10px] tracking-[0.2em] uppercase"
-          style={{ color: 'rgba(189,167,136,0.25)' }}
+          style={{ color: 'rgba(199,170,137,0.25)' }}
         >
           Mentoria Sublime © 2025
         </div>
@@ -112,7 +112,7 @@ export default function LoginPage() {
       {/* ── Painel direito — formulário ────────────────── */}
       <div
         className="flex-1 flex flex-col items-center justify-center px-8 py-12 relative"
-        style={{ background: '#f4f1e6' }}
+        style={{ background: '#F6F2E7' }}
       >
         {/* Logo mobile */}
         <div className="lg:hidden flex justify-center mb-10">
@@ -145,7 +145,7 @@ export default function LoginPage() {
             <div>
               <label
                 className="block text-xs font-body font-semibold tracking-[0.1em] uppercase mb-2"
-                style={{ color: '#5c4f46' }}
+                style={{ color: '#604E44' }}
               >
                 E-mail
               </label>
@@ -153,7 +153,7 @@ export default function LoginPage() {
                 <Mail
                   size={15}
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style={{ color: '#bda788' }}
+                  style={{ color: '#C7AA89' }}
                 />
                 <input
                   type="email"
@@ -166,15 +166,15 @@ export default function LoginPage() {
                   className="w-full pl-10 pr-4 py-3 text-sm font-body rounded-xl outline-none transition-all duration-200"
                   style={{
                     background: '#ffffff',
-                    border: '1px solid rgba(189,167,136,0.4)',
-                    color: '#2d2d2d',
+                    border: '1px solid rgba(199,170,137,0.4)',
+                    color: '#292929',
                   }}
                   onFocus={e => {
-                    e.target.style.border = '1px solid #bda788'
-                    e.target.style.boxShadow = '0 0 0 3px rgba(189,167,136,0.15)'
+                    e.target.style.border = '1px solid #C7AA89'
+                    e.target.style.boxShadow = '0 0 0 3px rgba(199,170,137,0.25)'
                   }}
                   onBlur={e => {
-                    e.target.style.border = '1px solid rgba(189,167,136,0.4)'
+                    e.target.style.border = '1px solid rgba(199,170,137,0.4)'
                     e.target.style.boxShadow = 'none'
                   }}
                 />
@@ -185,7 +185,7 @@ export default function LoginPage() {
             <div>
               <label
                 className="block text-xs font-body font-semibold tracking-[0.1em] uppercase mb-2"
-                style={{ color: '#5c4f46' }}
+                style={{ color: '#604E44' }}
               >
                 Senha
               </label>
@@ -193,7 +193,7 @@ export default function LoginPage() {
                 <Lock
                   size={15}
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style={{ color: '#bda788' }}
+                  style={{ color: '#C7AA89' }}
                 />
                 <input
                   type={showPwd ? 'text' : 'password'}
@@ -206,15 +206,15 @@ export default function LoginPage() {
                   className="w-full pl-10 pr-11 py-3 text-sm font-body rounded-xl outline-none transition-all duration-200"
                   style={{
                     background: '#ffffff',
-                    border: '1px solid rgba(189,167,136,0.4)',
-                    color: '#2d2d2d',
+                    border: '1px solid rgba(199,170,137,0.4)',
+                    color: '#292929',
                   }}
                   onFocus={e => {
-                    e.target.style.border = '1px solid #bda788'
-                    e.target.style.boxShadow = '0 0 0 3px rgba(189,167,136,0.15)'
+                    e.target.style.border = '1px solid #C7AA89'
+                    e.target.style.boxShadow = '0 0 0 3px rgba(199,170,137,0.25)'
                   }}
                   onBlur={e => {
-                    e.target.style.border = '1px solid rgba(189,167,136,0.4)'
+                    e.target.style.border = '1px solid rgba(199,170,137,0.4)'
                     e.target.style.boxShadow = 'none'
                   }}
                 />
@@ -222,7 +222,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPwd(v => !v)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2"
-                  style={{ color: 'rgba(189,167,136,0.6)' }}
+                  style={{ color: 'rgba(199,170,137,0.6)' }}
                 >
                   {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
@@ -249,20 +249,20 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full py-3.5 rounded-xl text-sm font-body font-semibold tracking-[0.08em] transition-all duration-300 relative overflow-hidden mt-2"
               style={{
-                background: loading ? '#5c4f46' : '#2d2d2d',
-                color: '#f4f1e6',
+                background: loading ? '#604E44' : '#3D281C',
+                color: '#F6F2E7',
                 letterSpacing: '0.08em',
               }}
               onMouseEnter={e => {
                 if (!loading) {
                   e.currentTarget.style.background = 'linear-gradient(135deg, #8e7028, #ab9051, #f2ea9c, #ab9051, #8e7028)'
-                  e.currentTarget.style.color = '#2d2d2d'
+                  e.currentTarget.style.color = '#292929'
                 }
               }}
               onMouseLeave={e => {
                 if (!loading) {
-                  e.currentTarget.style.background = '#2d2d2d'
-                  e.currentTarget.style.color = '#f4f1e6'
+                  e.currentTarget.style.background = '#3D281C'
+                  e.currentTarget.style.color = '#F6F2E7'
                 }
               }}
             >
@@ -281,14 +281,14 @@ export default function LoginPage() {
           </form>
 
           {/* Link cadastro */}
-          <p className="mt-7 text-center text-sm font-body" style={{ color: 'rgba(45,45,45,0.5)' }}>
+          <p className="mt-7 text-center text-sm font-body" style={{ color: 'rgba(41,41,41,0.5)' }}>
             Ainda não tem conta?{' '}
             <Link
               to="/register"
               className="font-semibold transition-colors"
-              style={{ color: '#5c4f46' }}
+              style={{ color: '#604E44' }}
               onMouseEnter={e => e.currentTarget.style.color = '#8e7028'}
-              onMouseLeave={e => e.currentTarget.style.color = '#5c4f46'}
+              onMouseLeave={e => e.currentTarget.style.color = '#604E44'}
             >
               Cadastre-se
             </Link>

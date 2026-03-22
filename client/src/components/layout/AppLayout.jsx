@@ -20,7 +20,7 @@ export default function AppLayout() {
   const title = pageTitles[location.pathname] || 'Mentoria Sublime'
 
   return (
-    <div className="flex h-screen overflow-hidden bg-offwhite">
+    <div className="flex h-screen overflow-hidden bg-cream">
       <Sidebar />
 
       {/* Main */}

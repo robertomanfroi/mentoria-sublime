@@ -47,8 +47,8 @@
 @layer base {
   body {
     font-family: 'Montserrat', sans-serif;
-    background-color: #f4f1e6;
-    color: #2d2d2d;
+    background-color: #F6F2E7;
+    color: #292929;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -77,15 +77,15 @@
   }
 
   .nude-gradient {
-    background: linear-gradient(135deg, #f4f1e6, #e8dfd0);
+    background: linear-gradient(135deg, #F6F2E7, #D8D1C1);
   }
 
   .brand-bg {
-    background-color: #2d2d2d;
+    background-color: #3D281C;
   }
 
   .brand-cream {
-    background-color: #f4f1e6;
+    background-color: #F6F2E7;
   }
 
   /* Animações */
@@ -132,8 +132,8 @@
 
 /* ─── SCROLLBAR ─────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track  { background: #f4f1e6; }
-::-webkit-scrollbar-thumb  { background: #bda788; border-radius: 3px; }
+::-webkit-scrollbar-track  { background: #F6F2E7; }
+::-webkit-scrollbar-thumb  { background: #C7AA89; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #8e7028; }
 
 /* ─── UTILITÁRIOS ───────────────────────────────────────────────────────────── */

@@ -61,7 +61,7 @@ export default function ProgressBar({
       {/* Track */}
       <div
         className={cn(
-          'w-full rounded-full bg-nude-medium/60 overflow-hidden',
+          'w-full rounded-full bg-beige/60 overflow-hidden',
           heights[size] || heights.md
         )}
       >
@@ -70,7 +70,7 @@ export default function ProgressBar({
           ref={fillRef}
           className={cn(
             'h-full rounded-full relative overflow-hidden',
-            'bg-gradient-to-r from-gold to-nude-medium',
+            'bg-gradient-to-r from-gold-dark to-gold',
             animated && 'transition-[width] duration-[800ms] ease-out'
           )}
           style={{ width: `${clampedValue}%` }}
