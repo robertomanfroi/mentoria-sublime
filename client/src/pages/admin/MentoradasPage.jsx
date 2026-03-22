@@ -36,7 +36,7 @@ export default function MentoradasPage() {
       key: 'checklist_pct',
       label: 'Checklist',
       render: (val) => (
-        <span className={`font-medium ${val >= 60 ? 'text-gold' : val >= 25 ? 'text-amber-600' : 'text-dark/50'}`}>
+        <span className="font-medium" style={{ color: val >= 60 ? '#8e7028' : val >= 25 ? '#C7AA89' : 'rgba(41,41,41,0.45)' }}>
           {val != null ? `${val}%` : '—'}
         </span>
       ),

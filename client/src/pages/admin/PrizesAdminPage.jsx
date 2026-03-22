@@ -7,10 +7,16 @@ import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 
+const PRIZE_COLORS = {
+  1: '#8e7028',  // dourado oficial
+  2: '#9a9690',  // prata
+  3: '#9a7060',  // bronze/caramelo
+}
+
 const positionConfig = [
-  { position: 1, icon: Trophy, label: '1º Lugar', color: 'text-gold' },
-  { position: 2, icon: Medal, label: '2º Lugar', color: 'text-slate-400' },
-  { position: 3, icon: Award, label: '3º Lugar', color: 'text-amber-700' },
+  { position: 1, icon: Trophy, label: '1º Lugar' },
+  { position: 2, icon: Medal,  label: '2º Lugar' },
+  { position: 3, icon: Award,  label: '3º Lugar' },
 ]
 
 function PrizeForm({ prize, config, onSaved }) {
@@ -41,8 +47,11 @@ function PrizeForm({ prize, config, onSaved }) {
   return (
     <Card variant={config.position === 1 ? 'gold' : 'default'} className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className={`w-9 h-9 rounded-xl bg-nude-light flex items-center justify-center`}>
-          <Icon size={18} className={config.color} />
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center"
+          style={{ background: `${PRIZE_COLORS[config.position]}15` }}
+        >
+          <Icon size={18} style={{ color: PRIZE_COLORS[config.position] }} />
         </div>
         <h3 className="font-display text-lg font-semibold text-dark">
           {config.label}
@@ -77,7 +86,7 @@ function PrizeForm({ prize, config, onSaved }) {
           Salvar
         </Button>
         {saved && (
-          <span className="text-sm font-body text-sage">✓ Salvo!</span>
+          <span className="text-sm font-body" style={{ color: '#3a8040' }}>✓ Salvo!</span>
         )}
       </div>
     </Card>

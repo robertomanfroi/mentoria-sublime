@@ -68,7 +68,7 @@ export default function Badge({ children, variant = 'default', className, ...pro
     default: 'bg-nude-light text-dark/70 border border-nude-medium',
     gold:    'bg-gold/10 text-gold-dark border border-gold/30',
     success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    warning: 'bg-amber-50 text-amber-700 border border-amber-200',
+    warning: 'bg-[rgba(199,170,137,0.12)] text-[#8e7028] border border-[rgba(199,170,137,0.35)]',
     danger:  'bg-red-50 text-red-600 border border-red-200',
     pending: 'bg-nude-light text-dark/60 border border-nude-medium',
   }

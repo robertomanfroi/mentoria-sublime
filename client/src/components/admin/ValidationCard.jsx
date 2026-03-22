@@ -80,10 +80,10 @@ export default function ValidationCard({ submission, onValidated }) {
         </div>
         <div>
           <p className="text-xs font-body text-dark/50 mb-0.5">Crescimento</p>
-          <p className={cn(
-            'text-sm font-body font-semibold',
-            gained >= 0 ? 'text-sage' : 'text-red-500'
-          )}>
+          <p
+            className="text-sm font-body font-semibold"
+            style={{ color: gained >= 0 ? '#3a8040' : '#c0392b' }}
+          >
             {gained >= 0 ? '+' : ''}{formatNumber(gained)}
           </p>
         </div>
