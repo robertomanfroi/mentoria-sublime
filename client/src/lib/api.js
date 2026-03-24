@@ -45,9 +45,7 @@ export const userApi = {
   getProfile: () => api.get('/users/profile'),
   updateProfile: (data) => api.put('/users/profile', data),
   uploadAvatar: (formData) =>
-    api.post('/users/profile/photo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+    api.post('/users/profile/photo', formData),
 }
 
 // Checklist endpoints
@@ -66,9 +64,7 @@ export const monthlyApi = {
   getData: (month) => api.get(`/monthly/${month}`),
   submit: (month, data) => api.post(`/monthly/${month}`, data),
   uploadProof: (month, formData) =>
-    api.post(`/monthly/${month}/proof`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+    api.post(`/monthly/${month}/proof`, formData),
   getHistory: () => api.get('/monthly'),
 }
 

@@ -204,12 +204,11 @@ async function calculateAndSaveRanking(month) {
 
   await prepare('DELETE FROM ranking_snapshots WHERE month = ?').run(month);
 
-  for (let i = 0; i < scores.length; i++) {
-    const s = scores[i];
+  for (const s of scores) {
     await prepare(`
       INSERT INTO ranking_snapshots (user_id, month, checklist_score, revenue_score, followers_score, total_score, position)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(s.user_id, month, s.checklist_score, s.revenue_score, s.followers_score, s.total_score, i + 1);
+    `).run(s.user_id, month, s.checklist_score, s.revenue_score, s.followers_score, s.total_score, s.position);
   }
 
   return { message: 'Ranking calculado e salvo.', count: scores.length };
