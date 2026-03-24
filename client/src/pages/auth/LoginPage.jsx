@@ -60,13 +60,13 @@ export default function LoginPage() {
         />
 
         {/* Conteúdo */}
-        <div className="relative z-10 flex flex-col items-center text-center px-12 gap-7 max-w-sm">
+        <div className="relative z-10 flex flex-col items-center text-center px-8 gap-5 w-full max-w-[480px]">
           {/* Logo */}
           <div className="relative">
             <img
               src="/brand/logos/logo-principal.svg"
               alt="Mentoria Sublime"
-              className="w-[332px] h-[332px] object-contain drop-shadow-2xl"
+              className="w-[432px] h-[432px] object-contain drop-shadow-2xl"
               style={{ filter: 'drop-shadow(0 8px 32px rgba(142,112,40,0.5))' }}
             />
           </div>
@@ -115,11 +115,11 @@ export default function LoginPage() {
         style={{ background: '#F6F2E7' }}
       >
         {/* Logo mobile */}
-        <div className="lg:hidden flex justify-center mb-10">
+        <div className="lg:hidden flex justify-center mb-6">
           <img
             src="/brand/logos/logo-principal.svg"
             alt="Mentoria Sublime"
-            className="w-[166px] h-[166px] object-contain"
+            className="w-[282px] h-[282px] object-contain"
             style={{ filter: 'drop-shadow(0 4px 16px rgba(142,112,40,0.4))' }}
           />
         </div>
