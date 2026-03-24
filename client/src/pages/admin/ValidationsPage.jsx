@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, CheckCheck } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { adminApi } from '../../lib/api'
 import { getCurrentMonth, formatMonth } from '../../lib/utils'
@@ -9,7 +9,8 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner'
 
 export default function ValidationsPage() {
   const [calculatingMonth, setCalculatingMonth] = useState(null)
-  const [calcResult, setCalcResult] = useState('')
+  const [approvingAll, setApprovingAll]         = useState(false)
+  const [calcResult, setCalcResult]             = useState('')
 
   const fn = useCallback(() => adminApi.getPendingValidations(), [])
   const { data, loading, refetch } = useApi(fn)
@@ -24,14 +25,29 @@ export default function ValidationsPage() {
       const res = await adminApi.calculateRanking(month)
       const count = res?.data?.count ?? 0
       if (count === 0) {
-        setCalcResult(`⚠ Nenhum dado validado para ${formatMonth(month)}. Valide submissões antes de recalcular.`)
+        setCalcResult(`⚠ Nenhum dado validado para ${formatMonth(month)}. Use "Aprovar Todas" primeiro.`)
       } else {
-        setCalcResult(`✓ Ranking de ${formatMonth(month)} calculado com sucesso! (${count} mentoradas)`)
+        setCalcResult(`✓ Ranking de ${formatMonth(month)} calculado! (${count} mentoradas)`)
       }
     } catch (err) {
-      setCalcResult('Erro ao calcular ranking: ' + (err?.response?.data?.error || err?.response?.data?.message || err?.message))
+      setCalcResult('Erro: ' + (err?.response?.data?.error || err?.message))
     } finally {
       setCalculatingMonth(null)
+    }
+  }
+
+  async function handleApproveAll() {
+    const month = getCurrentMonth()
+    setApprovingAll(true)
+    setCalcResult('')
+    try {
+      const res = await adminApi.approveAllPending(month)
+      setCalcResult(`✓ ${res.data.message}`)
+      refetch()
+    } catch (err) {
+      setCalcResult('Erro: ' + (err?.response?.data?.error || err?.message))
+    } finally {
+      setApprovingAll(false)
     }
   }
 
@@ -49,18 +65,30 @@ export default function ValidationsPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Button
-            variant="primary"
-            size="md"
-            loading={!!calculatingMonth}
-            onClick={handleCalculateRanking}
-            className="gap-2"
-          >
-            <RefreshCw size={15} />
-            Recalcular Ranking
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              size="md"
+              loading={approvingAll}
+              onClick={handleApproveAll}
+              className="gap-2"
+            >
+              <CheckCheck size={15} />
+              Aprovar Todas + Ranking
+            </Button>
+            <Button
+              variant="ghost"
+              size="md"
+              loading={!!calculatingMonth}
+              onClick={handleCalculateRanking}
+              className="gap-2"
+            >
+              <RefreshCw size={15} />
+              Só Recalcular
+            </Button>
+          </div>
           {calcResult && (
-            <p className={`text-xs font-body ${calcResult.startsWith('✓') ? 'text-sage' : 'text-red-500'}`}>
+            <p className={`text-xs font-body ${calcResult.startsWith('✓') ? 'text-sage' : 'text-amber-600'}`}>
               {calcResult}
             </p>
           )}

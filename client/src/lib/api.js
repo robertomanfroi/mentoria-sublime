@@ -86,6 +86,8 @@ export const adminApi = {
   getPendingValidations: () => api.get('/admin/validations'),
   validateSubmission: (id, approved) =>
     api.put(`/admin/validations/${id}`, { approved }),
+  approveAllPending: (month) =>
+    api.post('/admin/validations/approve-all', { month }),
   calculateRanking: (month) =>
     api.post('/admin/ranking/calculate', { month }),
   exportRanking: (month) =>

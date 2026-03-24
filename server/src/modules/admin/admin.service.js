@@ -145,9 +145,19 @@ async function listPendingValidations() {
            u.profile_photo
     FROM monthly_data md
     JOIN users u ON u.id = md.user_id
-    WHERE md.instagram_proof_image IS NOT NULL
+    WHERE md.validated_by_admin = 0
     ORDER BY md.created_at DESC
   `).all();
+}
+
+async function approveAllPending(month) {
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    const err = new Error('Formato de mês inválido.'); err.status = 400; throw err;
+  }
+  const result = await prepare(
+    'UPDATE monthly_data SET validated_by_admin = 1, updated_at = CURRENT_TIMESTAMP WHERE month = ? AND validated_by_admin = 0'
+  ).run(month);
+  return { approved: result.changes };
 }
 
 async function setValidation(id, approved) {
@@ -312,7 +322,7 @@ async function updateSettings(newSettings) {
 module.exports = {
   listUsers, updateUser, deleteUser,
   listChecklistItems, addChecklistItem, updateChecklistItem, deleteChecklistItem,
-  listPendingValidations, setValidation,
+  listPendingValidations, setValidation, approveAllPending,
   listAllPrizes, updatePrize,
   calculateAndSaveRanking,
   exportCSV,

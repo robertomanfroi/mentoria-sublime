@@ -48,6 +48,17 @@ async function setValidation(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function approveAllPending(req, res, next) {
+  try {
+    const month = req.body.month || req.query.month;
+    if (!month) return res.status(400).json({ error: 'Parâmetro month é obrigatório.' });
+    const result = await adminService.approveAllPending(month);
+    // Recalcula ranking após aprovar tudo
+    try { await adminService.calculateAndSaveRanking(month); } catch (e) { console.error('[approveAll] ranking:', e.message); }
+    res.json({ ...result, message: `${result.approved} submissões aprovadas e ranking recalculado.` });
+  } catch (err) { next(err); }
+}
+
 // ─── PRIZES ───────────────────────────────────────────────────────────────────
 
 async function listPrizes(req, res, next) {
@@ -92,7 +103,7 @@ async function updateSettings(req, res, next) {
 module.exports = {
   listUsers, updateUser, deleteUser,
   listChecklistItems, addChecklistItem, updateChecklistItem, deleteChecklistItem,
-  listValidations, setValidation,
+  listValidations, setValidation, approveAllPending,
   listPrizes, updatePrize,
   calculateRanking,
   exportCSV,

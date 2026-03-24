@@ -131,7 +131,7 @@ export default function MonthlyPage() {
       setSuccess(true)
       refetch()
     } catch (err) {
-      setError(err?.response?.data?.message || 'Erro ao salvar. Tente novamente.')
+      setError(err?.response?.data?.error || err?.response?.data?.message || 'Erro ao salvar. Tente novamente.')
     } finally {
       setSaving(false)
     }
