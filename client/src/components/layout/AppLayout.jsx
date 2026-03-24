@@ -13,6 +13,7 @@ const pageTitles = {
   '/admin/checklist': 'Gerenciar Checklist',
   '/admin/prizes': 'Gerenciar Prêmios',
   '/admin/export': 'Exportar Dados',
+  '/profile': 'Meu Perfil',
 }
 
 export default function AppLayout() {

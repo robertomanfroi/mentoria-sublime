@@ -13,6 +13,7 @@ import ChecklistPage from '../pages/ChecklistPage'
 import MonthlyPage from '../pages/MonthlyPage'
 import RankingPage from '../pages/RankingPage'
 import PrizesPage from '../pages/PrizesPage'
+import ProfilePage from '../pages/ProfilePage'
 
 // Admin pages
 import MentoradasPage from '../pages/admin/MentoradasPage'
@@ -66,6 +67,10 @@ const router = createBrowserRouter([
       {
         path: 'prizes',
         element: <PrizesPage />,
+      },
+      {
+        path: 'profile',
+        element: <ProfilePage />,
       },
 
       // Admin routes

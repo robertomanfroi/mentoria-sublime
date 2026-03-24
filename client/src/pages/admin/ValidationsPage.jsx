@@ -21,8 +21,13 @@ export default function ValidationsPage() {
     setCalculatingMonth(month)
     setCalcResult('')
     try {
-      await adminApi.calculateRanking(month)
-      setCalcResult(`✓ Ranking de ${formatMonth(month)} calculado com sucesso!`)
+      const res = await adminApi.calculateRanking(month)
+      const count = res?.data?.count ?? 0
+      if (count === 0) {
+        setCalcResult(`⚠ Nenhum dado validado para ${formatMonth(month)}. Valide submissões antes de recalcular.`)
+      } else {
+        setCalcResult(`✓ Ranking de ${formatMonth(month)} calculado com sucesso! (${count} mentoradas)`)
+      }
     } catch (err) {
       setCalcResult('Erro ao calcular ranking: ' + (err?.response?.data?.error || err?.response?.data?.message || err?.message))
     } finally {
