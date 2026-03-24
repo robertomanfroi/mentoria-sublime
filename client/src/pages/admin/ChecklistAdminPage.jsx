@@ -12,7 +12,7 @@ import Badge from '../../components/ui/Badge'
 export default function ChecklistAdminPage() {
   const [modal, setModal] = useState(null) // null | { mode: 'create'|'edit', item?: any }
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ title: '', stage_id: '', description: '' })
+  const [form, setForm] = useState({ description: '', stage: '', sort_order: '' })
 
   const fn = useCallback(() => checklistApi.getItems(), [])
   const { data, loading, refetch } = useApi(fn)
@@ -20,15 +20,15 @@ export default function ChecklistAdminPage() {
   const items = data?.items || data || []
 
   function openCreate() {
-    setForm({ title: '', stage_id: '', description: '' })
+    setForm({ description: '', stage: '', sort_order: '' })
     setModal({ mode: 'create' })
   }
 
   function openEdit(item) {
     setForm({
-      title: item.title || '',
-      stage_id: String(item.stage_id || ''),
       description: item.description || '',
+      stage: item.stage || '',
+      sort_order: String(item.sort_order ?? ''),
     })
     setModal({ mode: 'edit', item })
   }
@@ -64,17 +64,15 @@ export default function ChecklistAdminPage() {
     {
       key: 'stage',
       label: 'Etapa',
-      render: (val, row) => (
-        <Badge variant="gold">
-          {val?.name || `Etapa ${row.stage_id}`}
-        </Badge>
+      render: (val) => (
+        <Badge variant="gold">{val || '—'}</Badge>
       ),
     },
-    { key: 'title', label: 'Item' },
+    { key: 'description', label: 'Descrição' },
     {
-      key: 'description',
-      label: 'Descrição',
-      render: (val) => val || '—',
+      key: 'sort_order',
+      label: 'Ordem',
+      render: (val) => val ?? '—',
     },
   ]
 
@@ -114,20 +112,22 @@ export default function ChecklistAdminPage() {
       >
         <div className="space-y-4">
           <Input
-            label="Título do item"
-            value={form.title}
-            onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-          />
-          <Input
-            label="ID da Etapa (número)"
-            type="number"
-            value={form.stage_id}
-            onChange={(e) => setForm((p) => ({ ...p, stage_id: e.target.value }))}
-          />
-          <Input
-            label="Descrição (opcional)"
+            label="Descrição do item"
             value={form.description}
             onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+            required
+          />
+          <Input
+            label="Etapa (ex: Fundamentos, Conteúdo)"
+            value={form.stage}
+            onChange={(e) => setForm((p) => ({ ...p, stage: e.target.value }))}
+            required
+          />
+          <Input
+            label="Ordem (número)"
+            type="number"
+            value={form.sort_order}
+            onChange={(e) => setForm((p) => ({ ...p, sort_order: e.target.value }))}
           />
           <div className="flex gap-3 pt-2">
             <Button variant="ghost" size="md" onClick={() => setModal(null)} className="flex-1">
