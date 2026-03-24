@@ -28,7 +28,7 @@ export default function LoginPage() {
       await login(form.email, form.password)
       navigate(from, { replace: true })
     } catch (err) {
-      setError(err?.response?.data?.message || 'E-mail ou senha incorretos.')
+      setError(err?.response?.data?.error || err?.response?.data?.message || 'E-mail ou senha incorretos.')
     } finally {
       setLoading(false)
     }

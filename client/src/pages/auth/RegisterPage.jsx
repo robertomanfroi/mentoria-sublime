@@ -58,7 +58,9 @@ export default function RegisterPage() {
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(
-        err?.response?.data?.message || 'Erro ao criar conta. Tente novamente.'
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        'Erro ao criar conta. Tente novamente.'
       )
     } finally {
       setLoading(false)
