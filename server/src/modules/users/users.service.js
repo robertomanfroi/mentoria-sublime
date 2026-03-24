@@ -1,6 +1,11 @@
 const { prepare } = require('../../config/database');
 const { mapUser } = require('../auth/auth.service');
 
+function sanitizeString(str) {
+  if (typeof str !== 'string') return '';
+  return str.trim().replace(/[<>]/g, '');
+}
+
 async function getProfile(userId) {
   const row = await prepare(
     'SELECT id, name, email, instagram_handle, profile_photo, role, created_at, updated_at FROM users WHERE id = ?'
@@ -14,7 +19,12 @@ async function getProfile(userId) {
 }
 
 async function updateProfile(userId, { name, instagram_handle }) {
-  if (!name && instagram_handle === undefined) {
+  const cleanName  = name !== undefined ? sanitizeString(name) : undefined;
+  const cleanInsta = instagram_handle !== undefined
+    ? sanitizeString(instagram_handle).replace(/^@/, '')
+    : undefined;
+
+  if (!cleanName && cleanInsta === undefined) {
     const err = new Error('Nenhum campo para atualizar.');
     err.status = 400;
     throw err;
@@ -23,8 +33,8 @@ async function updateProfile(userId, { name, instagram_handle }) {
   const fields = [];
   const values = [];
 
-  if (name) { fields.push('name = ?'); values.push(name); }
-  if (instagram_handle !== undefined) { fields.push('instagram_handle = ?'); values.push(instagram_handle); }
+  if (cleanName) { fields.push('name = ?'); values.push(cleanName); }
+  if (cleanInsta !== undefined) { fields.push('instagram_handle = ?'); values.push(cleanInsta); }
   fields.push('updated_at = CURRENT_TIMESTAMP');
   values.push(userId);
 

@@ -13,16 +13,23 @@ export function useApi(fn, deps = [], options = {}) {
   const [loading, setLoading] = useState(immediate)
   const [error, setError] = useState(null)
   const mountedRef = useRef(true)
+  const abortControllerRef = useRef(null)
 
   useEffect(() => {
     mountedRef.current = true
     return () => {
       mountedRef.current = false
+      // Cancela requisição pendente ao desmontar o componente
+      abortControllerRef.current?.abort()
     }
   }, [])
 
   const execute = useCallback(
     async (...args) => {
+      // Cancela requisição anterior se ainda estiver em andamento
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = new AbortController()
+
       setLoading(true)
       setError(null)
 
@@ -34,6 +41,9 @@ export function useApi(fn, deps = [], options = {}) {
         }
         return result
       } catch (err) {
+        // Ignora erros de cancelamento (AbortError)
+        if (err?.name === 'AbortError' || err?.code === 'ERR_CANCELED') return
+
         if (mountedRef.current) {
           // 404 é tratado como "sem dados" (não como erro de tela)
           if (err?.response?.status === 404) {

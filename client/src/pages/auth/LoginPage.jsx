@@ -139,11 +139,12 @@ export default function LoginPage() {
           </div>
 
           {/* Formulário */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" aria-label="Formulário de login">
 
             {/* Email */}
             <div>
               <label
+                htmlFor="email"
                 className="block text-xs font-body font-semibold tracking-[0.1em] uppercase mb-2"
                 style={{ color: '#604E44' }}
               >
@@ -154,8 +155,10 @@ export default function LoginPage() {
                   size={15}
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
                   style={{ color: '#C7AA89' }}
+                  aria-hidden="true"
                 />
                 <input
+                  id="email"
                   type="email"
                   name="email"
                   value={form.email}
@@ -184,6 +187,7 @@ export default function LoginPage() {
             {/* Senha */}
             <div>
               <label
+                htmlFor="password"
                 className="block text-xs font-body font-semibold tracking-[0.1em] uppercase mb-2"
                 style={{ color: '#604E44' }}
               >
@@ -194,8 +198,10 @@ export default function LoginPage() {
                   size={15}
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
                   style={{ color: '#C7AA89' }}
+                  aria-hidden="true"
                 />
                 <input
+                  id="password"
                   type={showPwd ? 'text' : 'password'}
                   name="password"
                   value={form.password}
@@ -223,6 +229,8 @@ export default function LoginPage() {
                   onClick={() => setShowPwd(v => !v)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2"
                   style={{ color: 'rgba(199,170,137,0.6)' }}
+                  aria-label={showPwd ? 'Ocultar senha' : 'Mostrar senha'}
+                  aria-pressed={showPwd}
                 >
                   {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
@@ -230,24 +238,27 @@ export default function LoginPage() {
             </div>
 
             {/* Erro */}
-            {error && (
-              <div
-                className="px-4 py-3 rounded-xl text-sm font-body"
-                style={{
-                  background: 'rgba(192,57,43,0.07)',
-                  border: '1px solid rgba(192,57,43,0.2)',
-                  color: '#c0392b',
-                }}
-              >
-                {error}
-              </div>
-            )}
+            <div role="alert" aria-live="polite">
+              {error && (
+                <div
+                  className="px-4 py-3 rounded-xl text-sm font-body"
+                  style={{
+                    background: 'rgba(192,57,43,0.07)',
+                    border: '1px solid rgba(192,57,43,0.2)',
+                    color: '#c0392b',
+                  }}
+                >
+                  {error}
+                </div>
+              )}
+            </div>
 
             {/* Botão submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-xl text-sm font-body font-semibold tracking-[0.08em] transition-all duration-300 relative overflow-hidden mt-2"
+              aria-disabled={loading}
+              className="w-full py-3.5 rounded-xl text-sm font-body font-semibold tracking-[0.08em] transition-all duration-300 relative overflow-hidden mt-2 disabled:cursor-not-allowed disabled:opacity-70"
               style={{
                 background: loading ? '#604E44' : '#3D281C',
                 color: '#F6F2E7',

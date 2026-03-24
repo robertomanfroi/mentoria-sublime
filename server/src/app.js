@@ -14,8 +14,17 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 
 // ─── Middlewares globais ──────────────────────────────────────────────────────
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    // Permite requisições sem origin (mobile apps, Postman em dev)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`Origem não permitida pelo CORS: ${origin}`));
+  },
   credentials: true,
 }));
 

@@ -25,10 +25,23 @@ async function listUsers() {
   const snapshotMap = {};
   snapshots.forEach(s => { snapshotMap[s.user_id] = s; });
 
+  // Uma query com GROUP BY em vez de N queries individuais
+  const userIds = users.map(u => u.id);
+  let completedMap = {};
+  if (userIds.length > 0) {
+    const placeholders = userIds.map(() => '?').join(',');
+    const completedRows = await prepare(`
+      SELECT user_id, COUNT(*) as cnt
+      FROM checklist_progress
+      WHERE user_id IN (${placeholders}) AND completed = 1
+      GROUP BY user_id
+    `).all(...userIds);
+    completedMap = Object.fromEntries(completedRows.map(r => [r.user_id, r.cnt]));
+  }
+
   const result = [];
   for (const u of users) {
-    const completedRow = await prepare('SELECT COUNT(*) as cnt FROM checklist_progress WHERE user_id = ? AND completed = 1').get(u.id);
-    const checklist_completed = completedRow.cnt;
+    const checklist_completed = completedMap[u.id] || 0;
     const md = monthlyMap[u.id];
     const snap = snapshotMap[u.id];
     const checklistPct = totalChecklist > 0 ? Math.round((checklist_completed / totalChecklist) * 100) : 0;
@@ -202,12 +215,33 @@ async function exportCSV() {
   const totalRow = await prepare('SELECT COUNT(*) as cnt FROM checklist_items WHERE active = 1').get();
   const total = totalRow.cnt;
 
+  // Busca todos os dados em batch para evitar N+1
+  const exportUserIds = users.map(u => u.id);
+  let exportCompletedMap = {};
+  let exportSnapshotMap = {};
+  if (exportUserIds.length > 0) {
+    const ph = exportUserIds.map(() => '?').join(',');
+    const completedRows = await prepare(`
+      SELECT user_id, COUNT(*) as cnt FROM checklist_progress
+      WHERE user_id IN (${ph}) AND completed = 1 GROUP BY user_id
+    `).all(...exportUserIds);
+    exportCompletedMap = Object.fromEntries(completedRows.map(r => [r.user_id, r.cnt]));
+
+    const snapRows = await prepare(`
+      SELECT rs.* FROM ranking_snapshots rs
+      INNER JOIN (
+        SELECT user_id, MAX(month) as max_month FROM ranking_snapshots
+        WHERE user_id IN (${ph}) GROUP BY user_id
+      ) latest ON rs.user_id = latest.user_id AND rs.month = latest.max_month
+    `).all(...exportUserIds, ...exportUserIds);
+    exportSnapshotMap = Object.fromEntries(snapRows.map(r => [r.user_id, r]));
+  }
+
   const rows = [];
   for (const u of users) {
-    const completedRow = await prepare('SELECT COUNT(*) as cnt FROM checklist_progress WHERE user_id = ? AND completed = 1').get(u.id);
-    const completed = completedRow.cnt;
+    const completed = exportCompletedMap[u.id] || 0;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-    const latestSnapshot = await prepare('SELECT * FROM ranking_snapshots WHERE user_id = ? ORDER BY month DESC LIMIT 1').get(u.id);
+    const latestSnapshot = exportSnapshotMap[u.id] || null;
 
     rows.push({
       name: u.name,

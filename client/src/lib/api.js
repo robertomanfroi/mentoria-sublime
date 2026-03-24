@@ -2,7 +2,7 @@ import axios from 'axios'
 import { getToken, removeToken } from './auth'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

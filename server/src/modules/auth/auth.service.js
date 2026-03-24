@@ -24,8 +24,19 @@ function mapUser(row) {
   };
 }
 
+function sanitizeString(str) {
+  if (typeof str !== 'string') return '';
+  return str.trim().replace(/[<>]/g, '');
+}
+
 async function register({ name, email, password, instagram_handle }) {
-  if (!name || !email || !password) {
+  const cleanName  = sanitizeString(name);
+  const cleanEmail = sanitizeString(email).toLowerCase();
+  const cleanInsta = instagram_handle
+    ? sanitizeString(instagram_handle).replace(/^@/, '')
+    : null;
+
+  if (!cleanName || !cleanEmail || !password) {
     const err = new Error('Nome, e-mail e senha são obrigatórios.');
     err.status = 400;
     throw err;
@@ -37,7 +48,14 @@ async function register({ name, email, password, instagram_handle }) {
     throw err;
   }
 
-  const existing = await prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase().trim());
+  // Valida formato básico de e-mail
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    const err = new Error('Formato de e-mail inválido.');
+    err.status = 400;
+    throw err;
+  }
+
+  const existing = await prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
   if (existing) {
     const err = new Error('E-mail já cadastrado.');
     err.status = 409;
@@ -47,7 +65,7 @@ async function register({ name, email, password, instagram_handle }) {
   const password_hash = bcrypt.hashSync(password, 10);
   const result = await prepare(
     'INSERT INTO users (name, email, password_hash, instagram_handle, role) VALUES (?, ?, ?, ?, ?)'
-  ).run(name.trim(), email.toLowerCase().trim(), password_hash, instagram_handle || null, 'mentorada');
+  ).run(cleanName, cleanEmail, password_hash, cleanInsta, 'mentorada');
 
   const row = await prepare('SELECT id, name, email, instagram_handle, profile_photo, role, created_at FROM users WHERE id = ?').get(result.lastInsertRowid);
   const token = generateToken(row);

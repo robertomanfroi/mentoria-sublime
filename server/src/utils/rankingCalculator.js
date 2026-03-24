@@ -68,8 +68,23 @@ function calculateMonthRanking(allMonthlyData, checklistProgressByUser) {
     };
   });
 
-  // Ordenar por total_score decrescente
-  results.sort((a, b) => b.total_score - a.total_score);
+  // Ordenar por total_score decrescente; empate → checklist_score como desempate
+  results.sort((a, b) => {
+    if (b.total_score !== a.total_score) return b.total_score - a.total_score;
+    return b.checklist_score - a.checklist_score;
+  });
+
+  // Atribuir posição com lógica de empate (mesma posição para scores iguais)
+  let position = 1;
+  for (let i = 0; i < results.length; i++) {
+    if (i > 0 && results[i].total_score === results[i - 1].total_score &&
+        results[i].checklist_score === results[i - 1].checklist_score) {
+      results[i].position = results[i - 1].position;
+    } else {
+      results[i].position = position;
+    }
+    position++;
+  }
 
   return results;
 }

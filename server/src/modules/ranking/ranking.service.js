@@ -4,13 +4,23 @@ const { calculateMonthRanking } = require('../../utils/rankingCalculator');
 async function buildChecklistProgressMap(userIds) {
   const totalRow = await prepare('SELECT COUNT(*) as cnt FROM checklist_items WHERE active = 1').get();
   const total = totalRow.cnt;
-  const map = {};
 
+  if (userIds.length === 0) return {};
+
+  // Uma única query com GROUP BY em vez de N queries individuais
+  const placeholders = userIds.map(() => '?').join(',');
+  const rows = await prepare(`
+    SELECT user_id, COUNT(*) as completed
+    FROM checklist_progress
+    WHERE user_id IN (${placeholders}) AND completed = 1
+    GROUP BY user_id
+  `).all(...userIds);
+
+  const completedMap = Object.fromEntries(rows.map(r => [r.user_id, r.completed]));
+
+  const map = {};
   for (const userId of userIds) {
-    const row = await prepare(
-      'SELECT COUNT(*) as cnt FROM checklist_progress WHERE user_id = ? AND completed = 1'
-    ).get(userId);
-    map[userId] = { completed: row.cnt, total };
+    map[userId] = { completed: completedMap[userId] || 0, total };
   }
 
   return map;
@@ -39,6 +49,7 @@ async function getRankingForMonth(month) {
       instagram_handle: s.instagram_handle,
       avatar_url: s.profile_photo ? `/uploads/${s.profile_photo}` : null,
       checklist_score: s.checklist_score,
+      revenue_score: s.revenue_score,
       followers_score: s.followers_score,
       total_score: s.total_score,
     }));
@@ -65,6 +76,7 @@ async function getRankingForMonth(month) {
       instagram_handle: user.instagram_handle || null,
       avatar_url: user.profile_photo ? `/uploads/${user.profile_photo}` : null,
       checklist_score: s.checklist_score,
+      revenue_score: s.revenue_score,
       followers_score: s.followers_score,
       total_score: s.total_score,
     };
