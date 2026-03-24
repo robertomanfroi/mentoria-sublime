@@ -230,7 +230,7 @@ export default function RankingPage() {
                   <RankingRow
                     key={entry.user_id || idx}
                     entry={entry}
-                    position={idx + 4}
+                    position={entry.position || idx + 4}
                     isCurrentUser={entry.user_id === user?.id}
                   />
                 ))}

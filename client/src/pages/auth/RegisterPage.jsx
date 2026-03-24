@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, User, Instagram, Camera, Sparkles } from 'lucide-react'
-import { authApi } from '../../lib/api'
+import { authApi, userApi } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
 import { setToken } from '../../lib/auth'
 import Button from '../../components/ui/Button'
@@ -54,7 +54,20 @@ export default function RegisterPage() {
       const res = await authApi.register(payload)
       const { token, user } = res.data
       setToken(token)
-      setUser(user)
+
+      if (avatarFile) {
+        try {
+          const formData = new FormData()
+          formData.append('photo', avatarFile)
+          const photoRes = await userApi.uploadAvatar(formData)
+          setUser(photoRes.data.user || user)
+        } catch (_) {
+          setUser(user)
+        }
+      } else {
+        setUser(user)
+      }
+
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(

@@ -42,7 +42,7 @@ export default function ValidationCard({ submission, onValidated }) {
       {/* Header: mentorada */}
       <div className="flex items-center gap-3 mb-4">
         <Avatar
-          src={submission.user?.avatar_url || submission.profile_photo}
+          src={submission.user?.avatar_url || (submission.profile_photo ? `/uploads/${submission.profile_photo}` : null)}
           name={submission.user?.name || submission.name}
           size="md"
           gold

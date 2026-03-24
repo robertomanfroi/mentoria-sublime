@@ -141,7 +141,8 @@ async function deleteChecklistItem(id) {
 
 async function listPendingValidations() {
   return prepare(`
-    SELECT md.*, u.name, u.email, u.instagram_handle
+    SELECT md.*, u.name, u.email, u.instagram_handle,
+           u.profile_photo
     FROM monthly_data md
     JOIN users u ON u.id = md.user_id
     WHERE md.instagram_proof_image IS NOT NULL
@@ -150,12 +151,20 @@ async function listPendingValidations() {
 }
 
 async function setValidation(id, approved) {
-  const existing = await prepare('SELECT id FROM monthly_data WHERE id = ?').get(id);
+  const existing = await prepare('SELECT id, month FROM monthly_data WHERE id = ?').get(id);
   if (!existing) {
     const err = new Error('Registro não encontrado.'); err.status = 404; throw err;
   }
   const validated = approved ? 1 : 0;
   await prepare('UPDATE monthly_data SET validated_by_admin = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(validated, id);
+
+  // Recalcula ranking automaticamente ao aprovar
+  if (approved) {
+    try {
+      await calculateAndSaveRanking(existing.month);
+    } catch (_) {}
+  }
+
   return prepare('SELECT * FROM monthly_data WHERE id = ?').get(id);
 }
 

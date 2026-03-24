@@ -5,7 +5,7 @@ import { RankBadge } from '../ui/Badge'
 import { StarGroup } from '../ui/StarRating'
 
 export default function RankingRow({ entry, position, isCurrentUser = false }) {
-  const growthPct = entry.followers_growth_pct ?? 0
+  const growthPct = entry.followers_gained ?? 0
   const gained = entry.followers_gained ?? 0
 
   const GrowthIcon = growthPct > 0 ? TrendingUp : growthPct < 0 ? TrendingDown : Minus
@@ -48,9 +48,9 @@ export default function RankingRow({ entry, position, isCurrentUser = false }) {
             </span>
           )}
         </div>
-        {entry.instagram && (
+        {entry.instagram_handle && (
           <p className="text-xs font-body text-dark/40 truncate">
-            @{entry.instagram}
+            @{entry.instagram_handle}
           </p>
         )}
       </div>
@@ -66,9 +66,9 @@ export default function RankingRow({ entry, position, isCurrentUser = false }) {
       {/* Estrelas */}
       <div className="hidden md:flex">
         <StarGroup
-          checklistPct={entry.checklist_pct}
+          checklistPct={entry.checklist_score}
           followersGained={gained}
-          revenueGrowthPct={entry.revenue_growth_pct}
+          revenueGrowthPct={entry.revenue_growth_pct ?? 0}
           size={15}
         />
       </div>
@@ -76,7 +76,7 @@ export default function RankingRow({ entry, position, isCurrentUser = false }) {
       {/* Score */}
       <div className="flex-shrink-0 min-w-[52px] text-right">
         <span className="text-sm font-body font-semibold text-gold">
-          {entry.score?.toFixed(1) || '0.0'}
+          {entry.total_score?.toFixed(1) || '0.0'}
         </span>
       </div>
     </div>

@@ -34,25 +34,35 @@ async function getRankingForMonth(month) {
   }
 
   const snapshots = await prepare(`
-    SELECT rs.*, u.name, u.instagram_handle, u.profile_photo
+    SELECT rs.*, u.name, u.instagram_handle, u.profile_photo,
+           md.followers_count, md.followers_previous, md.revenue, md.revenue_previous
     FROM ranking_snapshots rs
     JOIN users u ON u.id = rs.user_id
+    LEFT JOIN monthly_data md ON md.user_id = rs.user_id AND md.month = rs.month
     WHERE rs.month = ?
     ORDER BY rs.total_score DESC
   `).all(month);
 
   if (snapshots.length > 0) {
-    return snapshots.map((s, i) => ({
-      position: s.position || i + 1,
-      user_id: s.user_id,
-      name: s.name,
-      instagram_handle: s.instagram_handle,
-      avatar_url: s.profile_photo ? `/uploads/${s.profile_photo}` : null,
-      checklist_score: s.checklist_score,
-      revenue_score: s.revenue_score,
-      followers_score: s.followers_score,
-      total_score: s.total_score,
-    }));
+    return snapshots.map((s, i) => {
+      const followersGained = (s.followers_count || 0) - (s.followers_previous || 0);
+      const revenueGrowthPct = (s.revenue && s.revenue_previous)
+        ? ((s.revenue - s.revenue_previous) / s.revenue_previous) * 100
+        : 0;
+      return {
+        position: s.position || i + 1,
+        user_id: s.user_id,
+        name: s.name,
+        instagram_handle: s.instagram_handle,
+        avatar_url: s.profile_photo ? `/uploads/${s.profile_photo}` : null,
+        checklist_score: s.checklist_score,
+        revenue_score: s.revenue_score,
+        followers_score: s.followers_score,
+        total_score: s.total_score,
+        followers_gained: followersGained < 0 ? 0 : followersGained,
+        revenue_growth_pct: Math.round(revenueGrowthPct * 10) / 10,
+      };
+    });
   }
 
   const allMonthlyData = await prepare('SELECT * FROM monthly_data WHERE month = ?').all(month);
@@ -62,15 +72,22 @@ async function getRankingForMonth(month) {
   const checklistProgress = await buildChecklistProgressMap(userIds);
   const scores = calculateMonthRanking(allMonthlyData, checklistProgress);
 
+  const monthlyMap = Object.fromEntries(allMonthlyData.map(d => [d.user_id, d]));
+
   const scoreUserIds = scores.map(s => s.user_id);
   const placeholders = scoreUserIds.map(() => '?').join(',');
   const users = await prepare(`SELECT id, name, instagram_handle, profile_photo FROM users WHERE id IN (${placeholders})`).all(...scoreUserIds);
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
 
-  return scores.map((s, i) => {
+  return scores.map((s) => {
     const user = userMap[s.user_id] || {};
+    const md = monthlyMap[s.user_id] || {};
+    const followersGained = (md.followers_count || 0) - (md.followers_previous || 0);
+    const revenueGrowthPct = (md.revenue && md.revenue_previous)
+      ? ((md.revenue - md.revenue_previous) / md.revenue_previous) * 100
+      : 0;
     return {
-      position: i + 1,
+      position: s.position,
       user_id: s.user_id,
       name: user.name || null,
       instagram_handle: user.instagram_handle || null,
@@ -79,6 +96,8 @@ async function getRankingForMonth(month) {
       revenue_score: s.revenue_score,
       followers_score: s.followers_score,
       total_score: s.total_score,
+      followers_gained: followersGained < 0 ? 0 : followersGained,
+      revenue_growth_pct: Math.round(revenueGrowthPct * 10) / 10,
     };
   });
 }

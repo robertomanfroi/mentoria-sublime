@@ -105,9 +105,9 @@ export default function PodiumCard({ entry, position }) {
         </h3>
 
         {/* Instagram */}
-        {entry.instagram && (
+        {entry.instagram_handle && (
           <p className="text-xs font-body mt-0.5" style={{ color: 'rgba(96,78,68,0.6)' }}>
-            @{entry.instagram}
+            @{entry.instagram_handle}
           </p>
         )}
 
@@ -117,14 +117,14 @@ export default function PodiumCard({ entry, position }) {
           style={{ background: 'rgba(199,170,137,0.12)' }}
         >
           <span className="text-sm font-body font-semibold" style={{ color: '#8e7028' }}>
-            {entry.score?.toFixed(1) || '0.0'} pts
+            {entry.total_score?.toFixed(1) || '0.0'} pts
           </span>
         </div>
 
         {/* Estrelas */}
         <div className="mt-3">
           <StarGroup
-            checklistPct={entry.checklist_pct}
+            checklistPct={entry.checklist_score}
             followersGained={entry.followers_gained}
             revenueGrowthPct={entry.revenue_growth_pct}
             size={18}
