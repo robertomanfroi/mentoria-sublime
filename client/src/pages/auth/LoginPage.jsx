@@ -66,7 +66,7 @@ export default function LoginPage() {
             <img
               src="/brand/logos/logo-principal.svg"
               alt="Mentoria Sublime"
-              className="w-64 h-64 object-contain drop-shadow-2xl"
+              className="w-[332px] h-[332px] object-contain drop-shadow-2xl"
               style={{ filter: 'drop-shadow(0 8px 32px rgba(142,112,40,0.5))' }}
             />
           </div>
@@ -119,7 +119,7 @@ export default function LoginPage() {
           <img
             src="/brand/logos/logo-principal.svg"
             alt="Mentoria Sublime"
-            className="w-32 h-32 object-contain"
+            className="w-[166px] h-[166px] object-contain"
             style={{ filter: 'drop-shadow(0 4px 16px rgba(142,112,40,0.4))' }}
           />
         </div>

@@ -84,8 +84,8 @@ export default function Sidebar() {
         <img
           src="/brand/logos/logo-principal.svg"
           alt="Mentoria Sublime"
-          className="w-16 h-16 rounded-xl object-cover"
-          style={{ boxShadow: '0 4px 20px rgba(142,112,40,0.35)' }}
+          className="w-[84px] h-[84px] object-contain"
+          style={{ filter: 'drop-shadow(0 4px 20px rgba(142,112,40,0.35))' }}
         />
         <div className="text-center">
           <p className="font-display text-[#F6F2E7] text-sm tracking-[0.12em] uppercase leading-none">
