@@ -162,7 +162,9 @@ async function setValidation(id, approved) {
   if (approved) {
     try {
       await calculateAndSaveRanking(existing.month);
-    } catch (_) {}
+    } catch (e) {
+      console.error('[setValidation] falha ao recalcular ranking:', e.message);
+    }
   }
 
   return prepare('SELECT * FROM monthly_data WHERE id = ?').get(id);
@@ -241,7 +243,7 @@ async function exportCSV() {
         SELECT user_id, MAX(month) as max_month FROM ranking_snapshots
         WHERE user_id IN (${ph}) GROUP BY user_id
       ) latest ON rs.user_id = latest.user_id AND rs.month = latest.max_month
-    `).all(...exportUserIds, ...exportUserIds);
+    `).all(...exportUserIds);
     exportSnapshotMap = Object.fromEntries(snapRows.map(r => [r.user_id, r]));
   }
 
