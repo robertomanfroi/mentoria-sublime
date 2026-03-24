@@ -5,7 +5,7 @@ import { RankBadge } from '../ui/Badge'
 import { StarGroup } from '../ui/StarRating'
 
 export default function RankingRow({ entry, position, isCurrentUser = false }) {
-  const growthPct = entry.followers_gained ?? 0
+  const growthPct = entry.revenue_growth_pct ?? entry.followers_gained ?? 0
   const gained = entry.followers_gained ?? 0
 
   const GrowthIcon = growthPct > 0 ? TrendingUp : growthPct < 0 ? TrendingDown : Minus

@@ -51,7 +51,7 @@ export default function ChecklistAdminPage() {
   }
 
   async function handleDelete(item) {
-    if (!confirm(`Remover item "${item.title}"?`)) return
+    if (!confirm(`Remover item "${item.description}"?`)) return
     try {
       await checklistApi.deleteItem(item.id)
       refetch()
