@@ -3,7 +3,7 @@ import { getToken, removeToken } from './auth'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api',
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -83,7 +83,7 @@ export const prizesApi = {
 // Admin endpoints
 export const adminApi = {
   getMentoradas: () => api.get('/admin/users'),
-  getPendingValidations: () => api.get('/admin/validations'),
+  getPendingValidations: (month) => api.get('/admin/validations', { params: month ? { month } : {} }),
   validateSubmission: (id, approved) =>
     api.put(`/admin/validations/${id}`, { approved }),
   approveAllPending: (month) =>

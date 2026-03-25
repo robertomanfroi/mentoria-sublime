@@ -1,11 +1,21 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const adminController = require('./admin.controller');
 const authMiddleware = require('../../middleware/auth');
 const adminMiddleware = require('../../middleware/admin');
 
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas requisições. Tente novamente em alguns minutos.' },
+});
+
 router.use(authMiddleware);
 router.use(adminMiddleware);
+router.use(adminLimiter);
 
 // Users
 router.get('/users', adminController.listUsers);

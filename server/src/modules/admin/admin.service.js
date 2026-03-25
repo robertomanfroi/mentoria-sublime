@@ -1,16 +1,18 @@
-const { prepare } = require('../../config/database');
+const { prepare, executeTransaction } = require('../../config/database');
 const { calculateMonthRanking } = require('../../utils/rankingCalculator');
 const { buildChecklistProgressMap } = require('../ranking/ranking.service');
 
-async function listUsers() {
+async function listUsers({ page = 1, limit = 100 } = {}) {
   const totalRow = await prepare('SELECT COUNT(*) as cnt FROM checklist_items WHERE active = 1').get();
   const totalChecklist = totalRow.cnt;
   const currentMonth = new Date().toISOString().slice(0, 7);
+  const offset = (Math.max(1, page) - 1) * limit;
 
   const users = await prepare(`
     SELECT u.id, u.name, u.email, u.instagram_handle, u.profile_photo, u.role, u.created_at
     FROM users u WHERE u.role = 'mentorada' ORDER BY u.name ASC
-  `).all();
+    LIMIT ? OFFSET ?
+  `).all(limit, offset);
 
   const monthlyRows = await prepare('SELECT * FROM monthly_data WHERE month = ?').all(currentMonth);
   const monthlyMap = {};
@@ -139,15 +141,22 @@ async function deleteChecklistItem(id) {
   return { success: true };
 }
 
-async function listPendingValidations() {
-  return prepare(`
+async function listPendingValidations(month, { page = 1, limit = 50 } = {}) {
+  const currentMonth = month || new Date().toISOString().slice(0, 7);
+  const offset = (Math.max(1, page) - 1) * limit;
+  const rows = await prepare(`
     SELECT md.*, u.name, u.email, u.instagram_handle,
            u.profile_photo
     FROM monthly_data md
     JOIN users u ON u.id = md.user_id
-    WHERE md.validated_by_admin = 0
+    WHERE md.validated_by_admin = 0 AND md.month = ?
     ORDER BY md.created_at DESC
-  `).all();
+    LIMIT ? OFFSET ?
+  `).all(currentMonth, limit, offset);
+  const totalRow = await prepare(
+    'SELECT COUNT(*) as cnt FROM monthly_data WHERE validated_by_admin = 0 AND month = ?'
+  ).get(currentMonth);
+  return { data: rows, total: totalRow.cnt, page, limit };
 }
 
 async function approveAllPending(month) {
@@ -168,14 +177,9 @@ async function setValidation(id, approved) {
   const validated = approved ? 1 : 0;
   await prepare('UPDATE monthly_data SET validated_by_admin = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(validated, id);
 
-  // Recalcula ranking automaticamente ao aprovar
-  if (approved) {
-    try {
-      await calculateAndSaveRanking(existing.month);
-    } catch (e) {
-      console.error('[setValidation] falha ao recalcular ranking:', e.message);
-    }
-  }
+  // Não recalcula ranking aqui para evitar N recalculações em aprovações individuais.
+  // O ranking deve ser recalculado manualmente via POST /admin/ranking/calculate
+  // ou automaticamente após approveAllPending.
 
   return prepare('SELECT * FROM monthly_data WHERE id = ?').get(id);
 }
@@ -204,7 +208,7 @@ async function calculateAndSaveRanking(month) {
     const err = new Error('Formato de mês inválido. Use YYYY-MM.'); err.status = 400; throw err;
   }
 
-  const allMonthlyData = await prepare('SELECT * FROM monthly_data WHERE month = ?').all(month);
+  const allMonthlyData = await prepare('SELECT * FROM monthly_data WHERE month = ? AND validated_by_admin = 1').all(month);
   const userIds = allMonthlyData.map(d => d.user_id);
 
   if (userIds.length === 0) {
@@ -214,14 +218,11 @@ async function calculateAndSaveRanking(month) {
   const checklistProgress = await buildChecklistProgressMap(userIds);
   const scores = calculateMonthRanking(allMonthlyData, checklistProgress);
 
-  await prepare('DELETE FROM ranking_snapshots WHERE month = ?').run(month);
-
-  for (const s of scores) {
-    await prepare(`
-      INSERT INTO ranking_snapshots (user_id, month, checklist_score, revenue_score, followers_score, total_score, position)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(s.user_id, month, s.checklist_score, s.revenue_score, s.followers_score, s.total_score, s.position);
-  }
+  const insertSql = `INSERT INTO ranking_snapshots (user_id, month, checklist_score, revenue_score, followers_score, total_score, position) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+  await executeTransaction([
+    { sql: 'DELETE FROM ranking_snapshots WHERE month = ?', args: [month] },
+    ...scores.map(s => ({ sql: insertSql, args: [s.user_id, month, s.checklist_score, s.revenue_score, s.followers_score, s.total_score, s.position] })),
+  ]);
 
   return { message: 'Ranking calculado e salvo.', count: scores.length };
 }
@@ -281,12 +282,13 @@ async function exportCSV() {
   const headers = ['Nome', 'E-mail', 'Instagram', 'Checklist Concluídos', 'Total Itens',
     '% Checklist', 'Último Mês', 'Score Checklist', 'Score Seguidores', 'Score Total', 'Posição'];
 
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const csvLines = [
     headers.join(','),
     ...rows.map(r => [
-      `"${r.name}"`, `"${r.email}"`, `"${r.instagram_handle}"`,
+      esc(r.name), esc(r.email), esc(r.instagram_handle),
       r.checklist_completed, r.checklist_total, r.checklist_percentage,
-      `"${r.last_month}"`, r.checklist_score, r.followers_score,
+      esc(r.last_month), r.checklist_score, r.followers_score,
       r.total_score, r.position
     ].join(','))
   ];
@@ -310,12 +312,10 @@ async function getSettings() {
 async function updateSettings(newSettings) {
   const current = await getSettings();
   const merged = { ...current, ...newSettings };
-  try {
-    await prepare(`
-      INSERT INTO app_settings (key, value) VALUES ('config', ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
-    `).run(JSON.stringify(merged));
-  } catch (_) {}
+  await prepare(`
+    INSERT INTO app_settings (key, value) VALUES ('config', ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run(JSON.stringify(merged));
   return merged;
 }
 

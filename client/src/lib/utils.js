@@ -46,13 +46,11 @@ export function getMonthLabel(yearMonth) {
 }
 
 /**
- * Retorna o mês atual no formato "YYYY-MM"
+ * Retorna o mês atual no formato "YYYY-MM" em UTC,
+ * alinhado com o timezone do servidor.
  */
 export function getCurrentMonth() {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  return `${year}-${month}`
+  return new Date().toISOString().slice(0, 7)
 }
 
 /**

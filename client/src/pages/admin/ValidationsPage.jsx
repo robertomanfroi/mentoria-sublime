@@ -12,13 +12,14 @@ export default function ValidationsPage() {
   const [approvingAll, setApprovingAll]         = useState(false)
   const [calcResult, setCalcResult]             = useState('')
 
-  const fn = useCallback(() => adminApi.getPendingValidations(), [])
+  const currentMonth = getCurrentMonth()
+  const fn = useCallback(() => adminApi.getPendingValidations(currentMonth), [currentMonth])
   const { data, loading, refetch } = useApi(fn)
 
-  const submissions = data?.submissions || data || []
+  const submissions = data?.data || data?.submissions || data || []
 
   async function handleCalculateRanking() {
-    const month = getCurrentMonth()
+    const month = currentMonth
     setCalculatingMonth(month)
     setCalcResult('')
     try {
@@ -37,12 +38,16 @@ export default function ValidationsPage() {
   }
 
   async function handleApproveAll() {
-    const month = getCurrentMonth()
+    const month = currentMonth
     setApprovingAll(true)
     setCalcResult('')
     try {
       const res = await adminApi.approveAllPending(month)
-      setCalcResult(`✓ ${res.data.message}`)
+      if (res.status === 207) {
+        setCalcResult(`⚠ ${res.data.message}`)
+      } else {
+        setCalcResult(`✓ ${res.data.message}`)
+      }
       refetch()
     } catch (err) {
       setCalcResult('Erro: ' + (err?.response?.data?.error || err?.message))

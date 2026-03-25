@@ -55,17 +55,27 @@ async function seedPrizes() {
 }
 
 async function seedAdminUser() {
-  const existing = await prepare('SELECT id FROM users WHERE email = ?').get('admin@plataforma.com');
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@plataforma.com';
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminPassword && process.env.NODE_ENV === 'production') {
+    console.error('[seed] ADMIN_PASSWORD não definido em produção. Configure a variável de ambiente.');
+    return;
+  }
+
+  const password = adminPassword || 'admin123';
+
+  const existing = await prepare('SELECT id FROM users WHERE email = ?').get(adminEmail);
   if (existing) {
     console.log('[seed] Admin user já existe, pulando.');
     return;
   }
 
-  const passwordHash = bcrypt.hashSync('admin123', 10);
+  const passwordHash = bcrypt.hashSync(password, 10);
   await prepare('INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)')
-    .run('Administrador', 'admin@plataforma.com', passwordHash, 'admin');
+    .run('Administrador', adminEmail, passwordHash, 'admin');
 
-  console.log('[seed] Admin user criado: admin@plataforma.com');
+  console.log(`[seed] Admin user criado: ${adminEmail}`);
 }
 
 async function seedSampleMentoradas() {
@@ -75,7 +85,8 @@ async function seedSampleMentoradas() {
     { name: 'Julia Mendes', email: 'julia@exemplo.com', instagram_handle: '@juliamendes' },
   ];
 
-  const passwordHash = bcrypt.hashSync('senha123', 10);
+  const samplePassword = process.env.SAMPLE_USER_PASSWORD || 'senha123';
+  const passwordHash = bcrypt.hashSync(samplePassword, 10);
   for (const u of samples) {
     const exists = await prepare('SELECT id FROM users WHERE email = ?').get(u.email);
     if (!exists) {

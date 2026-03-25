@@ -35,7 +35,7 @@ export default function ValidationCard({ submission, onValidated }) {
     )
   }
 
-  const gained = (submission.followers_count || submission.followers_current || 0) - (submission.followers_previous || 0)
+  const gained = (submission.followers_count || 0) - (submission.followers_previous || 0)
 
   return (
     <Card variant="default" className="animate-fade-in-up">
@@ -75,7 +75,7 @@ export default function ValidationCard({ submission, onValidated }) {
         <div>
           <p className="text-xs font-body text-dark/50 mb-0.5">Seguidores atual</p>
           <p className="text-sm font-body font-semibold text-dark">
-            {formatNumber(submission.followers_count || submission.followers_current || 0)}
+            {formatNumber(submission.followers_count || 0)}
           </p>
         </div>
         <div>
@@ -90,8 +90,8 @@ export default function ValidationCard({ submission, onValidated }) {
         <div>
           <p className="text-xs font-body text-dark/50 mb-0.5">Faturamento atual</p>
           <p className="text-sm font-body font-semibold text-dark">
-            {(submission.revenue || submission.revenue_current)
-              ? `R$ ${formatNumber(submission.revenue || submission.revenue_current)}`
+            {submission.revenue
+              ? `R$ ${formatNumber(submission.revenue)}`
               : '—'}
           </p>
         </div>
@@ -100,7 +100,10 @@ export default function ValidationCard({ submission, onValidated }) {
       {/* Print/comprovante */}
       {(submission.instagram_proof_image || submission.print_url) && (
         <a
-          href={submission.instagram_proof_image || submission.print_url}
+          href={
+            submission.print_url ||
+            `/uploads/${submission.instagram_proof_image}`
+          }
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1.5 text-xs font-body text-gold hover:underline mb-4"

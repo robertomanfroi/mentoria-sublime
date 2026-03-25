@@ -54,4 +54,21 @@ async function execRaw(sql) {
   await client.execute(sql);
 }
 
-module.exports = { prepare, execRaw };
+/**
+ * Executa múltiplos statements em transação atômica.
+ * @param {Array<{sql: string, args?: any[]}>} statements
+ */
+async function executeTransaction(statements) {
+  const tx = await client.transaction('write');
+  try {
+    for (const { sql, args = [] } of statements) {
+      await tx.execute({ sql, args });
+    }
+    await tx.commit();
+  } catch (err) {
+    await tx.rollback();
+    throw err;
+  }
+}
+
+module.exports = { prepare, execRaw, executeTransaction };

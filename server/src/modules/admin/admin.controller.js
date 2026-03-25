@@ -3,7 +3,13 @@ const adminService = require('./admin.service');
 // ─── USERS ───────────────────────────────────────────────────────────────────
 
 async function listUsers(req, res, next) {
-  try { res.json(await adminService.listUsers()); } catch (err) { next(err); }
+  try {
+    const { page, limit } = req.query;
+    res.json(await adminService.listUsers({
+      page: page ? Number(page) : 1,
+      limit: limit ? Math.min(Number(limit), 500) : 100,
+    }));
+  } catch (err) { next(err); }
 }
 
 async function updateUser(req, res, next) {
@@ -35,7 +41,13 @@ async function deleteChecklistItem(req, res, next) {
 // ─── VALIDATIONS ──────────────────────────────────────────────────────────────
 
 async function listValidations(req, res, next) {
-  try { res.json(await adminService.listPendingValidations()); } catch (err) { next(err); }
+  try {
+    const { month, page, limit } = req.query;
+    res.json(await adminService.listPendingValidations(month, {
+      page: page ? Number(page) : 1,
+      limit: limit ? Math.min(Number(limit), 200) : 50,
+    }));
+  } catch (err) { next(err); }
 }
 
 async function setValidation(req, res, next) {
@@ -53,9 +65,26 @@ async function approveAllPending(req, res, next) {
     const month = req.body.month || req.query.month;
     if (!month) return res.status(400).json({ error: 'Parâmetro month é obrigatório.' });
     const result = await adminService.approveAllPending(month);
-    // Recalcula ranking após aprovar tudo
-    try { await adminService.calculateAndSaveRanking(month); } catch (e) { console.error('[approveAll] ranking:', e.message); }
-    res.json({ ...result, message: `${result.approved} submissões aprovadas e ranking recalculado.` });
+    let rankingResult = null;
+    let rankingError = null;
+    try {
+      rankingResult = await adminService.calculateAndSaveRanking(month);
+    } catch (e) {
+      console.error('[approveAll] falha ao calcular ranking:', e.message);
+      rankingError = e.message;
+    }
+    if (rankingError) {
+      return res.status(207).json({
+        ...result,
+        message: `${result.approved} submissões aprovadas, mas o ranking falhou ao ser recalculado.`,
+        rankingError,
+      });
+    }
+    res.json({
+      ...result,
+      ranking: rankingResult,
+      message: `${result.approved} submissões aprovadas e ranking recalculado.`,
+    });
   } catch (err) { next(err); }
 }
 
