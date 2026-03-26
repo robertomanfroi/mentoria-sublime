@@ -208,7 +208,11 @@ async function calculateAndSaveRanking(month) {
     const err = new Error('Formato de mês inválido. Use YYYY-MM.'); err.status = 400; throw err;
   }
 
-  const allMonthlyData = await prepare('SELECT * FROM monthly_data WHERE month = ? AND validated_by_admin = 1').all(month);
+  const allMonthlyData = await prepare(`
+    SELECT md.* FROM monthly_data md
+    JOIN users u ON u.id = md.user_id AND u.role != 'admin'
+    WHERE md.month = ? AND md.validated_by_admin = 1
+  `).all(month);
   const userIds = allMonthlyData.map(d => d.user_id);
 
   if (userIds.length === 0) {

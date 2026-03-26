@@ -82,7 +82,8 @@ export const prizesApi = {
 
 // Admin endpoints
 export const adminApi = {
-  getMentoradas: () => api.get('/admin/users'),
+  getMentoradas: (page, limit) => api.get('/admin/users', { params: { page, limit } }),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
   getPendingValidations: (month) => api.get('/admin/validations', { params: month ? { month } : {} }),
   validateSubmission: (id, approved) =>
     api.put(`/admin/validations/${id}`, { approved }),

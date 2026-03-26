@@ -37,7 +37,7 @@ async function getRankingForMonth(month) {
     SELECT rs.*, u.name, u.instagram_handle, u.profile_photo,
            md.followers_count, md.followers_previous, md.revenue, md.revenue_previous
     FROM ranking_snapshots rs
-    JOIN users u ON u.id = rs.user_id
+    JOIN users u ON u.id = rs.user_id AND u.role != 'admin'
     LEFT JOIN monthly_data md ON md.user_id = rs.user_id AND md.month = rs.month
     WHERE rs.month = ?
     ORDER BY rs.total_score DESC
@@ -65,7 +65,11 @@ async function getRankingForMonth(month) {
     });
   }
 
-  const allMonthlyData = await prepare('SELECT * FROM monthly_data WHERE month = ?').all(month);
+  const allMonthlyData = await prepare(`
+    SELECT md.* FROM monthly_data md
+    JOIN users u ON u.id = md.user_id AND u.role != 'admin'
+    WHERE md.month = ?
+  `).all(month);
   const userIds = allMonthlyData.map(d => d.user_id);
   if (userIds.length === 0) return [];
 

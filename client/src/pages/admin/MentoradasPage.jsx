@@ -1,17 +1,39 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useApi } from '../../hooks/useApi'
 import { adminApi } from '../../lib/api'
-import { formatMonth, formatNumber } from '../../lib/utils'
+import { formatNumber } from '../../lib/utils'
 import DataTable from '../../components/admin/DataTable'
 import Avatar from '../../components/ui/Avatar'
 import Badge from '../../components/ui/Badge'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import Button from '../../components/ui/Button'
 
 export default function MentoradasPage() {
-  const fn = useCallback(() => adminApi.getMentoradas(), [])
-  const { data, loading } = useApi(fn)
+  const [deleting, setDeleting] = useState(null)   // row sendo deletada
+  const [confirm, setConfirm]   = useState(null)   // row aguardando confirmação
 
-  const mentoradas = data?.mentoradas || data || []
+  const fn = useCallback(() => adminApi.getMentoradas(), [])
+  const { data, loading, refetch } = useApi(fn)
+
+  const mentoradas = data?.data || data?.mentoradas || data || []
+
+  async function handleDelete(row) {
+    setConfirm(row)
+  }
+
+  async function confirmDelete() {
+    if (!confirm) return
+    setDeleting(confirm.id)
+    try {
+      await adminApi.deleteUser(confirm.id)
+      refetch()
+    } catch (err) {
+      alert('Erro ao excluir: ' + (err?.response?.data?.error || err?.message))
+    } finally {
+      setDeleting(null)
+      setConfirm(null)
+    }
+  }
 
   const columns = [
     {
@@ -107,8 +129,43 @@ export default function MentoradasPage() {
       <DataTable
         columns={columns}
         data={mentoradas}
+        onDelete={handleDelete}
         emptyMessage="Nenhuma mentorada cadastrada ainda."
       />
+
+      {/* Modal de confirmação de exclusão */}
+      {confirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h3 className="font-display text-lg font-semibold text-dark mb-2">
+              Excluir mentorada?
+            </h3>
+            <p className="font-body text-sm text-dark/60 mb-6">
+              Tem certeza que deseja excluir <strong>{confirm.name}</strong>?
+              Todos os dados dela (checklist, submissões, ranking) serão removidos permanentemente.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1"
+                onClick={() => setConfirm(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                className="flex-1"
+                loading={deleting === confirm.id}
+                onClick={confirmDelete}
+              >
+                Excluir
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
