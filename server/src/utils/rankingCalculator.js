@@ -6,8 +6,8 @@
  * @returns {Array} Array de { user_id, checklist_score, revenue_score, followers_score, total_score }
  */
 function calculateMonthRanking(allMonthlyData, checklistProgressByUser) {
-  // Filtra apenas os validados pelo admin
-  const validated = allMonthlyData.filter(d => d.validated_by_admin === 1);
+  // Usa todos os dados recebidos — filtragem é responsabilidade do caller
+  const validated = allMonthlyData;
 
   if (validated.length === 0) return [];
 

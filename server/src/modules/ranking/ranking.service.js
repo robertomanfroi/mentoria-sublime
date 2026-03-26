@@ -69,6 +69,7 @@ async function getRankingForMonth(month) {
     SELECT md.* FROM monthly_data md
     JOIN users u ON u.id = md.user_id AND u.role != 'admin'
     WHERE md.month = ?
+    ORDER BY md.created_at ASC
   `).all(month);
   const userIds = allMonthlyData.map(d => d.user_id);
   if (userIds.length === 0) return [];
