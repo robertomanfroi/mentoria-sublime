@@ -79,6 +79,10 @@ async function seedAdminUser() {
 }
 
 async function seedSampleMentoradas() {
+  if (process.env.NODE_ENV === 'production') {
+    console.log('[seed] Ambiente produção — seedSampleMentoradas ignorado.');
+    return;
+  }
   const samples = [
     { name: 'Ana Silva', email: 'ana@exemplo.com', instagram_handle: '@anasilva' },
     { name: 'Carla Souza', email: 'carla@exemplo.com', instagram_handle: '@carlasouza' },

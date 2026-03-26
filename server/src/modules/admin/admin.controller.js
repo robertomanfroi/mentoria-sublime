@@ -40,9 +40,14 @@ async function deleteChecklistItem(req, res, next) {
 
 // ─── VALIDATIONS ──────────────────────────────────────────────────────────────
 
+const MONTH_RE = /^\d{4}-\d{2}$/;
+
 async function listValidations(req, res, next) {
   try {
     const { month, page, limit } = req.query;
+    if (month && !MONTH_RE.test(month)) {
+      return res.status(400).json({ error: 'Formato de mês inválido. Use YYYY-MM.' });
+    }
     res.json(await adminService.listPendingValidations(month, {
       page: page ? Number(page) : 1,
       limit: limit ? Math.min(Number(limit), 200) : 50,
@@ -104,6 +109,7 @@ async function calculateRanking(req, res, next) {
   try {
     const month = req.body.month || req.query.month;
     if (!month) return res.status(400).json({ error: 'Parâmetro month é obrigatório. Ex: ?month=2024-03' });
+    if (!MONTH_RE.test(month)) return res.status(400).json({ error: 'Formato de mês inválido. Use YYYY-MM.' });
     res.json(await adminService.calculateAndSaveRanking(month));
   } catch (err) { next(err); }
 }

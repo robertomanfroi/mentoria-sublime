@@ -16,6 +16,7 @@ export default function MentoradasPage() {
   const { data, loading, refetch } = useApi(fn)
 
   const mentoradas = data?.data || data?.mentoradas || data || []
+  const totalMentoradas = data?.total ?? mentoradas.length
 
   async function handleDelete(row) {
     setConfirm(row)
@@ -50,7 +51,7 @@ export default function MentoradasPage() {
       ),
     },
     {
-      key: 'instagram',
+      key: 'instagram_handle',
       label: 'Instagram',
       render: (val) => val ? `@${val}` : '—',
     },
@@ -121,7 +122,7 @@ export default function MentoradasPage() {
         <div>
           <h1 className="font-display text-xl font-semibold text-dark">Mentoradas</h1>
           <p className="text-sm font-body text-dark/50 mt-0.5">
-            {mentoradas.length} mentoradas cadastradas
+            {totalMentoradas} mentoradas cadastradas
           </p>
         </div>
       </div>

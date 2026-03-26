@@ -17,6 +17,7 @@ export default function ValidationsPage() {
   const { data, loading, refetch } = useApi(fn)
 
   const submissions = data?.data || data?.submissions || data || []
+  const totalSubmissions = data?.total ?? submissions.length
 
   async function handleCalculateRanking() {
     const month = currentMonth
@@ -65,7 +66,7 @@ export default function ValidationsPage() {
             Validações Pendentes
           </h1>
           <p className="text-sm font-body text-dark/50 mt-0.5">
-            {submissions.length} submissão(ões) aguardando validação
+            {totalSubmissions} submissão(ões) aguardando validação
           </p>
         </div>
 

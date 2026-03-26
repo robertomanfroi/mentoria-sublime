@@ -8,6 +8,9 @@ async function listUsers({ page = 1, limit = 100 } = {}) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const offset = (Math.max(1, page) - 1) * limit;
 
+  const totalUsersRow = await prepare("SELECT COUNT(*) as cnt FROM users WHERE role = 'mentorada'").get();
+  const totalUsers = totalUsersRow.cnt;
+
   const users = await prepare(`
     SELECT u.id, u.name, u.email, u.instagram_handle, u.profile_photo, u.role, u.created_at
     FROM users u WHERE u.role = 'mentorada' ORDER BY u.name ASC
@@ -52,7 +55,7 @@ async function listUsers({ page = 1, limit = 100 } = {}) {
       id: u.id,
       name: u.name,
       email: u.email,
-      instagram: u.instagram_handle,
+      instagram_handle: u.instagram_handle,
       avatar_url: u.profile_photo ? `/uploads/${u.profile_photo}` : null,
       role: u.role,
       created_at: u.created_at,
@@ -70,7 +73,7 @@ async function listUsers({ page = 1, limit = 100 } = {}) {
       score: snap?.total_score ?? null,
     });
   }
-  return result;
+  return { data: result, total: totalUsers, page, limit };
 }
 
 async function updateUser(id, { name, email, instagram_handle, role }) {
@@ -98,7 +101,12 @@ async function deleteUser(id) {
   if (existing.role === 'admin') {
     const err = new Error('Não é possível remover um administrador.'); err.status = 403; throw err;
   }
-  await prepare('DELETE FROM users WHERE id = ?').run(id);
+  await executeTransaction([
+    { sql: 'DELETE FROM checklist_progress WHERE user_id = ?', args: [id] },
+    { sql: 'DELETE FROM monthly_data WHERE user_id = ?', args: [id] },
+    { sql: 'DELETE FROM ranking_snapshots WHERE user_id = ?', args: [id] },
+    { sql: 'DELETE FROM users WHERE id = ?', args: [id] },
+  ]);
   return { success: true };
 }
 
@@ -220,7 +228,9 @@ async function calculateAndSaveRanking(month) {
   }
 
   const checklistProgress = await buildChecklistProgressMap(userIds);
-  const scores = calculateMonthRanking(allMonthlyData, checklistProgress);
+  const settings = await getSettings();
+  const weights = settings?.ranking_weights || undefined;
+  const scores = calculateMonthRanking(allMonthlyData, checklistProgress, weights);
 
   const insertSql = `INSERT INTO ranking_snapshots (user_id, month, checklist_score, revenue_score, followers_score, total_score, position) VALUES (?, ?, ?, ?, ?, ?, ?)`;
   await executeTransaction([
@@ -309,7 +319,9 @@ async function getSettings() {
   try {
     const row = await prepare("SELECT value FROM app_settings WHERE key = 'config'").get();
     if (row) return JSON.parse(row.value);
-  } catch (_) {}
+  } catch (err) {
+    console.error('[getSettings] Erro ao ler configurações:', err.message);
+  }
   return SETTINGS_DEFAULTS;
 }
 

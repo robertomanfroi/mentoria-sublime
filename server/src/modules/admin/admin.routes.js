@@ -42,6 +42,7 @@ router.post('/ranking/calculate', adminController.calculateRanking);
 
 // Export
 router.get('/export', adminController.exportCSV);
+router.get('/export/ranking', adminController.exportCSV);
 
 // Settings
 router.get('/settings', adminController.getSettings);

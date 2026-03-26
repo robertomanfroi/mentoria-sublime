@@ -5,7 +5,12 @@
  * @param {Object} checklistProgressByUser - { [user_id]: { completed: Number, total: Number } }
  * @returns {Array} Array de { user_id, checklist_score, revenue_score, followers_score, total_score }
  */
-function calculateMonthRanking(allMonthlyData, checklistProgressByUser) {
+function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights) {
+  const w = {
+    checklist: weights?.checklist ?? 0.34,
+    revenue: weights?.revenue ?? 0.33,
+    followers: weights?.followers ?? 0.33,
+  };
   // Usa todos os dados recebidos — filtragem é responsabilidade do caller
   const validated = allMonthlyData;
 
@@ -55,9 +60,9 @@ function calculateMonthRanking(allMonthlyData, checklistProgressByUser) {
     const revenueScore = getRevenueScore(data);
     const followersScore = getFollowersScore(data);
     const totalScore =
-      checklistScore * 0.34 +
-      revenueScore * 0.33 +
-      followersScore * 0.33;
+      checklistScore * w.checklist +
+      revenueScore * w.revenue +
+      followersScore * w.followers;
 
     return {
       user_id: data.user_id,
