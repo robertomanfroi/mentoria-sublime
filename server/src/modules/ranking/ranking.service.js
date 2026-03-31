@@ -101,11 +101,13 @@ async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
   const allMonthlyData = await prepare(`
     SELECT md.* FROM monthly_data md
     JOIN users u ON u.id = md.user_id AND u.role != 'admin'
-    WHERE md.month = ?
+    WHERE md.month = ? AND md.validated_by_admin = 1
     ORDER BY md.created_at ASC
   `).all(month);
   const userIds = allMonthlyData.map(d => d.user_id);
-  if (userIds.length === 0) return [];
+  if (userIds.length === 0) {
+    return { data: [], total: 0, page: 1, totalPages: 0 };
+  }
 
   const checklistProgress = await buildChecklistProgressMap(userIds);
   const scores = calculateMonthRanking(allMonthlyData, checklistProgress);
@@ -138,6 +140,20 @@ async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
       revenue_growth_pct: Math.round(revenueGrowthPct * 10) / 10,
     };
   });
+
+  // Salvar snapshot automaticamente para persistir o ranking calculado
+  try {
+    const { executeTransaction } = require('../../config/database');
+    const insertSql = `INSERT OR REPLACE INTO ranking_snapshots (user_id, month, checklist_score, revenue_score, followers_score, total_score, position) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    await executeTransaction([
+      { sql: 'DELETE FROM ranking_snapshots WHERE month = ?', args: [month] },
+      ...scores.map(s => ({ sql: insertSql, args: [s.user_id, month, s.checklist_score, s.revenue_score, s.followers_score, s.total_score, s.position] })),
+    ]);
+    console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'auto_calculate_ranking', details: { month, count: scores.length } }));
+  } catch (saveErr) {
+    console.error('[ranking] falha ao salvar snapshot automático:', saveErr.message);
+  }
+
   setCache(month, liveResult);
 
   const safeLimit = Math.max(1, Number(limit) || 100);

@@ -36,7 +36,7 @@ export default function RankingPage() {
   const { data: prizesData } = useApi(prizesFn)
   const prizes = Array.isArray(prizesData) ? prizesData : []
 
-  const entries = Array.isArray(data) ? data : (data?.ranking || [])
+  const entries = Array.isArray(data) ? data : (data?.data || data?.ranking || [])
   const top3 = entries.slice(0, 3)
   const rest  = entries.slice(3)
 
