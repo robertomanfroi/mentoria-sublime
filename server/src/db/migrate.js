@@ -18,7 +18,17 @@ async function runMigrations() {
     const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
     const statements = sql.split(';').filter(s => s.trim().length > 0);
     for (const stmt of statements) {
-      await execRaw(stmt.trim());
+      try {
+        await execRaw(stmt.trim());
+      } catch (err) {
+        // ALTER TABLE ADD COLUMN não suporta IF NOT EXISTS no SQLite
+        // Ignora erro se a coluna já existir
+        if (err.message && err.message.includes('duplicate column name')) {
+          console.log(`[migrate] ${file}: coluna já existe, ignorando.`);
+        } else {
+          throw err;
+        }
+      }
     }
     console.log(`[migrate] Executado: ${file}`);
   }
