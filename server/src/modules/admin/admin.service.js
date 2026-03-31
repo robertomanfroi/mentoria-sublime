@@ -180,6 +180,34 @@ async function listPendingValidations(month, { page = 1, limit = 50 } = {}) {
   return { data: rows, total: totalRow.cnt, page, limit };
 }
 
+async function getMonthDiagnostic(month) {
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    const err = new Error('Formato de mês inválido. Use YYYY-MM.'); err.status = 400; throw err;
+  }
+  const allData = await prepare(`
+    SELECT md.id, md.user_id, md.month, md.followers_count, md.followers_previous,
+           md.revenue, md.revenue_previous, md.validated_by_admin, md.created_at,
+           u.name, u.instagram_handle
+    FROM monthly_data md
+    JOIN users u ON u.id = md.user_id AND u.role != 'admin'
+    WHERE md.month = ?
+    ORDER BY md.created_at DESC
+  `).all(month);
+
+  const snapshots = await prepare(
+    'SELECT user_id, total_score, position FROM ranking_snapshots WHERE month = ? ORDER BY position ASC'
+  ).all(month);
+
+  const validated = allData.filter(r => r.validated_by_admin === 1);
+  const pending   = allData.filter(r => r.validated_by_admin === 0);
+
+  return {
+    month,
+    monthly_data: { total: allData.length, validated: validated.length, pending: pending.length, rows: allData },
+    snapshots: { total: snapshots.length, rows: snapshots },
+  };
+}
+
 async function approveAllPending(month) {
   if (!/^\d{4}-\d{2}$/.test(month)) {
     const err = new Error('Formato de mês inválido.'); err.status = 400; throw err;
@@ -368,4 +396,5 @@ module.exports = {
   calculateAndSaveRanking,
   exportCSV,
   getSettings, updateSettings,
+  getMonthDiagnostic,
 };

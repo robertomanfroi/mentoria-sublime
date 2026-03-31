@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { RefreshCw, CheckCheck } from 'lucide-react'
+import { RefreshCw, CheckCheck, Database } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { adminApi } from '../../lib/api'
 import { getCurrentMonth, formatMonth } from '../../lib/utils'
@@ -11,10 +11,14 @@ export default function ValidationsPage() {
   const [calculatingMonth, setCalculatingMonth] = useState(null)
   const [approvingAll, setApprovingAll]         = useState(false)
   const [calcResult, setCalcResult]             = useState('')
+  const [showDiag, setShowDiag]                 = useState(false)
 
   const currentMonth = getCurrentMonth()
   const fn = useCallback(() => adminApi.getPendingValidations(currentMonth), [currentMonth])
   const { data, loading, refetch } = useApi(fn)
+
+  const diagFn = useCallback(() => adminApi.getDiagnostic(currentMonth), [currentMonth])
+  const { data: diagData, loading: diagLoading, refetch: refetchDiag } = useApi(diagFn, [], { immediate: false })
 
   const submissions = data?.data || data?.submissions || data || []
   const totalSubmissions = data?.total ?? submissions.length
@@ -31,6 +35,7 @@ export default function ValidationsPage() {
       } else {
         setCalcResult(`✓ Ranking de ${formatMonth(month)} calculado! (${count} mentoradas)`)
       }
+      if (showDiag) refetchDiag()
     } catch (err) {
       setCalcResult('Erro: ' + (err?.response?.data?.error || err?.message))
     } finally {
@@ -71,7 +76,7 @@ export default function ValidationsPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               variant="primary"
               size="md"
@@ -92,6 +97,15 @@ export default function ValidationsPage() {
               <RefreshCw size={15} />
               Só Recalcular
             </Button>
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={() => { const next = !showDiag; setShowDiag(next); if (next) refetchDiag(); }}
+              className="gap-2"
+            >
+              <Database size={15} />
+              Diagnóstico
+            </Button>
           </div>
           {calcResult && (
             <p className={`text-xs font-body ${calcResult.startsWith('✓') ? 'text-sage' : 'text-amber-600'}`}>
@@ -100,6 +114,40 @@ export default function ValidationsPage() {
           )}
         </div>
       </div>
+
+      {/* Painel diagnóstico */}
+      {showDiag && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-mono space-y-2">
+          <p className="font-semibold text-amber-800">Diagnóstico — {formatMonth(currentMonth)}</p>
+          {diagLoading ? <p className="text-amber-600">Carregando...</p> : diagData ? (
+            <>
+              <p>
+                <span className="font-semibold">monthly_data:</span>{' '}
+                {diagData.monthly_data?.total ?? 0} total —{' '}
+                <span className="text-green-700">{diagData.monthly_data?.validated ?? 0} validados</span> /{' '}
+                <span className="text-red-600">{diagData.monthly_data?.pending ?? 0} pendentes</span>
+              </p>
+              <p>
+                <span className="font-semibold">ranking_snapshots:</span>{' '}
+                {diagData.snapshots?.total ?? 0} entradas salvas
+              </p>
+              {diagData.monthly_data?.rows?.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="font-semibold text-amber-800">Dados por mentorada:</p>
+                  {diagData.monthly_data.rows.map(r => (
+                    <p key={r.id} className={r.validated_by_admin ? 'text-green-700' : 'text-red-600'}>
+                      {r.validated_by_admin ? '✓' : '✗'} {r.name} — seguidores: {r.followers_count ?? '?'} / anterior: {r.followers_previous ?? '?'} — faturamento: {r.revenue ?? '?'}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {(diagData.monthly_data?.rows?.length ?? 0) === 0 && (
+                <p className="text-red-700 font-semibold">Nenhum dado de monthly_data encontrado para {currentMonth}!</p>
+              )}
+            </>
+          ) : <p className="text-amber-600">Sem dados.</p>}
+        </div>
+      )}
 
       {loading ? (
         <LoadingSpinner centered />

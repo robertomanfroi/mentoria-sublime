@@ -103,6 +103,15 @@ async function updatePrize(req, res, next) {
   try { res.json(await adminService.updatePrize(req.params.id, req.body)); } catch (err) { next(err); }
 }
 
+// ─── DIAGNOSTIC ───────────────────────────────────────────────────────────────
+
+async function getMonthDiagnostic(req, res, next) {
+  try {
+    const month = req.query.month || new Date().toISOString().slice(0, 7);
+    res.json(await adminService.getMonthDiagnostic(month));
+  } catch (err) { next(err); }
+}
+
 // ─── RANKING ──────────────────────────────────────────────────────────────────
 
 async function calculateRanking(req, res, next) {
@@ -143,4 +152,5 @@ module.exports = {
   calculateRanking,
   exportCSV,
   getSettings, updateSettings,
+  getMonthDiagnostic,
 };

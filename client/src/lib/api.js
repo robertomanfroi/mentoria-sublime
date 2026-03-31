@@ -96,6 +96,7 @@ export const adminApi = {
       params: { month },
       responseType: 'blob',
     }),
+  getDiagnostic: (month) => api.get('/admin/diagnostic', { params: { month } }),
 }
 
 export default api
