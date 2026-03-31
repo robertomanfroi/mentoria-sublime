@@ -155,7 +155,7 @@ async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
     console.error('[ranking] falha ao salvar snapshot automático:', saveErr.message);
   }
 
-  setCache(month, liveResult);
+  setCache(`ranking-${month}`, liveResult);
 
   const safeLimit = Math.max(1, Number(limit) || 100);
   const safePage  = Math.max(1, Number(page) || 1);
