@@ -80,15 +80,13 @@ function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights)
   });
 
   // Atribuir posição com lógica de empate (mesma posição para scores iguais)
-  let position = 1;
   for (let i = 0; i < results.length; i++) {
     if (i > 0 && results[i].total_score === results[i - 1].total_score &&
         results[i].checklist_score === results[i - 1].checklist_score) {
       results[i].position = results[i - 1].position;
     } else {
-      results[i].position = position;
+      results[i].position = i + 1;
     }
-    position++;
   }
 
   return results;

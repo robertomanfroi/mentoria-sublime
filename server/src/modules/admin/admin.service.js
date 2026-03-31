@@ -1,6 +1,9 @@
 const { prepare, executeTransaction } = require('../../config/database');
 const { calculateMonthRanking } = require('../../utils/rankingCalculator');
-const { buildChecklistProgressMap } = require('../ranking/ranking.service');
+const { buildChecklistProgressMap, invalidateRankingCache } = require('../ranking/ranking.service');
+
+// Lock simples para evitar cálculos de ranking simultâneos para o mesmo mês
+const rankingLocks = new Map();
 
 async function listUsers({ page = 1, limit = 100 } = {}) {
   const totalRow = await prepare('SELECT COUNT(*) as cnt FROM checklist_items WHERE active = 1').get();
@@ -8,12 +11,12 @@ async function listUsers({ page = 1, limit = 100 } = {}) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const offset = (Math.max(1, page) - 1) * limit;
 
-  const totalUsersRow = await prepare("SELECT COUNT(*) as cnt FROM users WHERE role = 'mentorada'").get();
+  const totalUsersRow = await prepare("SELECT COUNT(*) as cnt FROM users WHERE role = 'mentorada' AND deleted_at IS NULL").get();
   const totalUsers = totalUsersRow.cnt;
 
   const users = await prepare(`
     SELECT u.id, u.name, u.email, u.instagram_handle, u.profile_photo, u.role, u.created_at
-    FROM users u WHERE u.role = 'mentorada' ORDER BY u.name ASC
+    FROM users u WHERE u.role = 'mentorada' AND u.deleted_at IS NULL ORDER BY u.name ASC
     LIMIT ? OFFSET ?
   `).all(limit, offset);
 
@@ -77,10 +80,14 @@ async function listUsers({ page = 1, limit = 100 } = {}) {
 }
 
 async function updateUser(id, { name, email, instagram_handle, role }) {
-  const existing = await prepare('SELECT id FROM users WHERE id = ?').get(id);
+  const existing = await prepare('SELECT id FROM users WHERE id = ? AND deleted_at IS NULL').get(id);
   if (!existing) {
     const err = new Error('Usuário não encontrado.'); err.status = 404; throw err;
   }
+  const cleanName = name !== undefined && name !== null ? String(name).trim().slice(0, 100) : null;
+  const cleanInsta = instagram_handle !== undefined && instagram_handle !== null
+    ? String(instagram_handle).trim().replace(/^@/, '').slice(0, 50) : null;
+  const cleanEmail = email !== undefined && email !== null ? String(email).trim().slice(0, 200) : null;
   await prepare(`
     UPDATE users SET
       name = COALESCE(?, name),
@@ -89,24 +96,20 @@ async function updateUser(id, { name, email, instagram_handle, role }) {
       role = COALESCE(?, role),
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
-  `).run(name ?? null, email ?? null, instagram_handle ?? null, role ?? null, id);
+  `).run(cleanName, cleanEmail, cleanInsta, role ?? null, id);
   return prepare('SELECT id, name, email, instagram_handle, role, created_at FROM users WHERE id = ?').get(id);
 }
 
 async function deleteUser(id) {
-  const existing = await prepare('SELECT id, role FROM users WHERE id = ?').get(id);
+  const existing = await prepare('SELECT id, role FROM users WHERE id = ? AND deleted_at IS NULL').get(id);
   if (!existing) {
     const err = new Error('Usuário não encontrado.'); err.status = 404; throw err;
   }
   if (existing.role === 'admin') {
     const err = new Error('Não é possível remover um administrador.'); err.status = 403; throw err;
   }
-  await executeTransaction([
-    { sql: 'DELETE FROM checklist_progress WHERE user_id = ?', args: [id] },
-    { sql: 'DELETE FROM monthly_data WHERE user_id = ?', args: [id] },
-    { sql: 'DELETE FROM ranking_snapshots WHERE user_id = ?', args: [id] },
-    { sql: 'DELETE FROM users WHERE id = ?', args: [id] },
-  ]);
+  await prepare("UPDATE users SET deleted_at = datetime('now') WHERE id = ?").run(id);
+  console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'delete_user', userId: id, details: { deletedRole: existing.role } }));
   return { success: true };
 }
 
@@ -118,9 +121,11 @@ async function addChecklistItem({ stage, description, sort_order }) {
   if (!stage || !description) {
     const err = new Error('stage e description são obrigatórios.'); err.status = 400; throw err;
   }
+  const cleanStage = String(stage).trim().slice(0, 100);
+  const cleanDescription = String(description).trim().slice(0, 500);
   const result = await prepare(
     'INSERT INTO checklist_items (stage, description, sort_order, active) VALUES (?, ?, ?, 1)'
-  ).run(stage, description, sort_order || 0);
+  ).run(cleanStage, cleanDescription, sort_order || 0);
   return prepare('SELECT * FROM checklist_items WHERE id = ?').get(result.lastInsertRowid);
 }
 
@@ -144,6 +149,14 @@ async function deleteChecklistItem(id) {
   const existing = await prepare('SELECT id FROM checklist_items WHERE id = ?').get(id);
   if (!existing) {
     const err = new Error('Item não encontrado.'); err.status = 404; throw err;
+  }
+  const progressRow = await prepare(
+    'SELECT COUNT(*) as cnt FROM checklist_progress WHERE checklist_item_id = ? AND completed = 1'
+  ).get(id);
+  if (progressRow.cnt > 0) {
+    const err = new Error('Não é possível remover item com progresso registrado.');
+    err.status = 409;
+    throw err;
   }
   await prepare('DELETE FROM checklist_items WHERE id = ?').run(id);
   return { success: true };
@@ -174,6 +187,7 @@ async function approveAllPending(month) {
   const result = await prepare(
     'UPDATE monthly_data SET validated_by_admin = 1, updated_at = CURRENT_TIMESTAMP WHERE month = ? AND validated_by_admin = 0'
   ).run(month);
+  console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'approve_all_monthly', userId: null, details: { month, approved: result.changes } }));
   return { approved: result.changes };
 }
 
@@ -216,6 +230,12 @@ async function calculateAndSaveRanking(month) {
     const err = new Error('Formato de mês inválido. Use YYYY-MM.'); err.status = 400; throw err;
   }
 
+  if (rankingLocks.get(month)) {
+    const err = new Error(`Cálculo de ranking para ${month} já está em andamento.`); err.status = 409; throw err;
+  }
+  rankingLocks.set(month, true);
+
+  try {
   const allMonthlyData = await prepare(`
     SELECT md.* FROM monthly_data md
     JOIN users u ON u.id = md.user_id AND u.role != 'admin'
@@ -238,13 +258,18 @@ async function calculateAndSaveRanking(month) {
     ...scores.map(s => ({ sql: insertSql, args: [s.user_id, month, s.checklist_score, s.revenue_score, s.followers_score, s.total_score, s.position] })),
   ]);
 
+  invalidateRankingCache(month);
+  console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'calculate_ranking', userId: null, details: { month, count: scores.length } }));
   return { message: 'Ranking calculado e salvo.', count: scores.length };
+  } finally {
+    rankingLocks.delete(month);
+  }
 }
 
 async function exportCSV() {
   const users = await prepare(`
     SELECT u.id, u.name, u.email, u.instagram_handle
-    FROM users u WHERE u.role = 'mentorada' ORDER BY u.name
+    FROM users u WHERE u.role = 'mentorada' AND u.deleted_at IS NULL ORDER BY u.name
   `).all();
 
   const totalRow = await prepare('SELECT COUNT(*) as cnt FROM checklist_items WHERE active = 1').get();

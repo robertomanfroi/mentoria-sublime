@@ -94,6 +94,7 @@ async function login({ email, password }) {
   }
 
   const token = generateToken(user);
+  console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'login', userId: user.id, details: { email: user.email, role: user.role } }));
   return { token, user: mapUser(user) };
 }
 

@@ -24,6 +24,15 @@ async function updateProfile(userId, { name, instagram_handle }) {
     ? sanitizeString(instagram_handle).replace(/^@/, '')
     : undefined;
 
+  if (cleanInsta !== undefined) {
+    const instaRegex = /^[a-zA-Z0-9._]{1,30}$/;
+    if (!instaRegex.test(cleanInsta)) {
+      const err = new Error('instagram_handle inválido. Use apenas letras, números, underscore e ponto. Máximo 30 caracteres.');
+      err.status = 400;
+      throw err;
+    }
+  }
+
   if (!cleanName && cleanInsta === undefined) {
     const err = new Error('Nenhum campo para atualizar.');
     err.status = 400;

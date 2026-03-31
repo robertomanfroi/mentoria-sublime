@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./modules/auth/auth.routes');
 const usersRoutes = require('./modules/users/users.routes');
@@ -12,6 +13,33 @@ const adminRoutes = require('./modules/admin/admin.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
+
+// TODO: instalar compression para gzip (npm install compression)
+
+// ─── Rate Limiting ────────────────────────────────────────────────────────────
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas requisições. Tente novamente em alguns minutos.' },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas de autenticação. Tente novamente em alguns minutos.' },
+});
+
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Limite de requisições admin atingido. Tente novamente em alguns minutos.' },
+});
 
 // ─── Middlewares globais ──────────────────────────────────────────────────────
 const allowedOrigins = process.env.CORS_ORIGIN
@@ -30,6 +58,14 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ─── Headers de segurança ─────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
 // Suprime tela de aviso do ngrok no browser
 app.use((req, res, next) => {
@@ -61,13 +97,14 @@ app.get('/health', (req, res) => {
 });
 
 // ─── Rotas ────────────────────────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
+app.use('/api', generalLimiter);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/checklist', checklistRoutes);
 app.use('/api/monthly', monthlyRoutes);
 app.use('/api/ranking', rankingRoutes);
 app.use('/api/prizes', prizesRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminLimiter, adminRoutes);
 
 // ─── SPA fallback (React Router) ─────────────────────────────────────────────
 if (fs.existsSync(clientBuild)) {

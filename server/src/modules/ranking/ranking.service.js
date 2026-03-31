@@ -1,6 +1,28 @@
 const { prepare } = require('../../config/database');
 const { calculateMonthRanking } = require('../../utils/rankingCalculator');
 
+// Cache simples em memória para getRankingForMonth (TTL: 60 segundos)
+const rankingCache = new Map();
+const CACHE_TTL_MS = 60 * 1000;
+
+function getCached(month) {
+  const entry = rankingCache.get(`ranking-${month}`);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    rankingCache.delete(`ranking-${month}`);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCache(month, data) {
+  rankingCache.set(`ranking-${month}`, { data, timestamp: Date.now() });
+}
+
+function invalidateRankingCache(month) {
+  rankingCache.delete(`ranking-${month}`);
+}
+
 async function buildChecklistProgressMap(userIds) {
   const totalRow = await prepare('SELECT COUNT(*) as cnt FROM checklist_items WHERE active = 1').get();
   const total = totalRow.cnt;
@@ -26,12 +48,15 @@ async function buildChecklistProgressMap(userIds) {
   return map;
 }
 
-async function getRankingForMonth(month) {
+async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
   if (!/^\d{4}-\d{2}$/.test(month)) {
     const err = new Error('Formato de mês inválido. Use YYYY-MM.');
     err.status = 400;
     throw err;
   }
+
+  const cached = getCached(month);
+  if (cached) return cached;
 
   const snapshots = await prepare(`
     SELECT rs.*, u.name, u.instagram_handle, u.profile_photo,
@@ -44,7 +69,7 @@ async function getRankingForMonth(month) {
   `).all(month);
 
   if (snapshots.length > 0) {
-    return snapshots.map((s, i) => {
+    const result = snapshots.map((s, i) => {
       const followersGained = (s.followers_count || 0) - (s.followers_previous || 0);
       const revenueGrowthPct = (s.revenue && s.revenue_previous)
         ? ((s.revenue - s.revenue_previous) / s.revenue_previous) * 100
@@ -63,6 +88,14 @@ async function getRankingForMonth(month) {
         revenue_growth_pct: Math.round(revenueGrowthPct * 10) / 10,
       };
     });
+    setCache(month, result);
+
+    const safeLimit2 = Math.max(1, Number(limit) || 100);
+    const safePage2  = Math.max(1, Number(page) || 1);
+    const total2 = result.length;
+    const totalPages2 = Math.ceil(total2 / safeLimit2);
+    const offset2 = (safePage2 - 1) * safeLimit2;
+    return { data: result.slice(offset2, offset2 + safeLimit2), total: total2, page: safePage2, totalPages: totalPages2 };
   }
 
   const allMonthlyData = await prepare(`
@@ -84,7 +117,7 @@ async function getRankingForMonth(month) {
   const users = await prepare(`SELECT id, name, instagram_handle, profile_photo FROM users WHERE id IN (${placeholders})`).all(...scoreUserIds);
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
 
-  return scores.map((s) => {
+  const liveResult = scores.map((s) => {
     const user = userMap[s.user_id] || {};
     const md = monthlyMap[s.user_id] || {};
     const followersGained = (md.followers_count || 0) - (md.followers_previous || 0);
@@ -105,6 +138,16 @@ async function getRankingForMonth(month) {
       revenue_growth_pct: Math.round(revenueGrowthPct * 10) / 10,
     };
   });
+  setCache(month, liveResult);
+
+  const safeLimit = Math.max(1, Number(limit) || 100);
+  const safePage  = Math.max(1, Number(page) || 1);
+  const total = liveResult.length;
+  const totalPages = Math.ceil(total / safeLimit);
+  const offset = (safePage - 1) * safeLimit;
+  const paginated = liveResult.slice(offset, offset + safeLimit);
+
+  return { data: paginated, total, page: safePage, totalPages };
 }
 
 async function getMyPosition(userId, month) {
@@ -114,8 +157,9 @@ async function getMyPosition(userId, month) {
     throw err;
   }
 
-  const ranking = await getRankingForMonth(month);
-  const myEntry = ranking.find(r => r.user_id === userId);
+  const rankingResult = await getRankingForMonth(month, { page: 1, limit: 10000 });
+  const allEntries = rankingResult.data || rankingResult;
+  const myEntry = allEntries.find(r => r.user_id === userId);
 
   if (!myEntry) {
     return { position: null, scores: null, message: 'Dados não encontrados para este mês.' };
@@ -124,4 +168,4 @@ async function getMyPosition(userId, month) {
   return myEntry;
 }
 
-module.exports = { getRankingForMonth, getMyPosition, buildChecklistProgressMap };
+module.exports = { getRankingForMonth, getMyPosition, buildChecklistProgressMap, invalidateRankingCache };
