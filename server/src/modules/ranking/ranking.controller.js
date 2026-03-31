@@ -13,6 +13,14 @@ async function getRanking(req, res, next) {
   }
 }
 
+async function getGeneralRanking(req, res, next) {
+  try {
+    res.json(await rankingService.getGeneralRanking());
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getMyPosition(req, res, next) {
   try {
     const month = req.query.month;
@@ -26,4 +34,4 @@ async function getMyPosition(req, res, next) {
   }
 }
 
-module.exports = { getRanking, getMyPosition };
+module.exports = { getRanking, getGeneralRanking, getMyPosition };

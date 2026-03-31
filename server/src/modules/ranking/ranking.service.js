@@ -1,26 +1,27 @@
 const { prepare } = require('../../config/database');
 const { calculateMonthRanking } = require('../../utils/rankingCalculator');
 
-// Cache simples em memória para getRankingForMonth (TTL: 60 segundos)
+// Cache simples em memória (TTL: 60 segundos)
 const rankingCache = new Map();
 const CACHE_TTL_MS = 60 * 1000;
 
-function getCached(month) {
-  const entry = rankingCache.get(`ranking-${month}`);
+function getCached(key) {
+  const entry = rankingCache.get(key);
   if (!entry) return null;
   if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
-    rankingCache.delete(`ranking-${month}`);
+    rankingCache.delete(key);
     return null;
   }
   return entry.data;
 }
 
-function setCache(month, data) {
-  rankingCache.set(`ranking-${month}`, { data, timestamp: Date.now() });
+function setCache(key, data) {
+  rankingCache.set(key, { data, timestamp: Date.now() });
 }
 
 function invalidateRankingCache(month) {
   rankingCache.delete(`ranking-${month}`);
+  rankingCache.delete('ranking-geral');
 }
 
 async function buildChecklistProgressMap(userIds) {
@@ -55,7 +56,7 @@ async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
     throw err;
   }
 
-  const cached = getCached(month);
+  const cached = getCached(`ranking-${month}`);
   if (cached) return cached;
 
   const snapshots = await prepare(`
@@ -88,7 +89,7 @@ async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
         revenue_growth_pct: Math.round(revenueGrowthPct * 10) / 10,
       };
     });
-    setCache(month, result);
+    setCache(`ranking-${month}`, result);
 
     const safeLimit2 = Math.max(1, Number(limit) || 100);
     const safePage2  = Math.max(1, Number(page) || 1);
@@ -184,4 +185,47 @@ async function getMyPosition(userId, month) {
   return myEntry;
 }
 
-module.exports = { getRankingForMonth, getMyPosition, buildChecklistProgressMap, invalidateRankingCache };
+async function getGeneralRanking() {
+  const cached = getCached('ranking-geral');
+  if (cached) return cached;
+
+  // Agrega todos os snapshots por usuário: média dos total_score e contagem de meses
+  const rows = await prepare(`
+    SELECT rs.user_id,
+           AVG(rs.total_score)      AS avg_score,
+           SUM(rs.total_score)      AS sum_score,
+           COUNT(rs.month)          AS months_count,
+           MAX(rs.total_score)      AS best_score,
+           AVG(rs.checklist_score)  AS avg_checklist,
+           AVG(rs.revenue_score)    AS avg_revenue,
+           AVG(rs.followers_score)  AS avg_followers,
+           u.name, u.instagram_handle, u.profile_photo
+    FROM ranking_snapshots rs
+    JOIN users u ON u.id = rs.user_id AND u.role != 'admin'
+    GROUP BY rs.user_id
+    ORDER BY avg_score DESC, months_count DESC
+  `).all();
+
+  if (rows.length === 0) return { data: [], total: 0 };
+
+  const result = rows.map((r, i) => ({
+    position: i + 1,
+    user_id: r.user_id,
+    name: r.name,
+    instagram_handle: r.instagram_handle,
+    avatar_url: r.profile_photo ? `/uploads/${r.profile_photo}` : null,
+    avg_score: Math.round(r.avg_score * 100) / 100,
+    sum_score: Math.round(r.sum_score * 100) / 100,
+    best_score: Math.round(r.best_score * 100) / 100,
+    months_count: r.months_count,
+    avg_checklist: Math.round(r.avg_checklist * 100) / 100,
+    avg_revenue: Math.round(r.avg_revenue * 100) / 100,
+    avg_followers: Math.round(r.avg_followers * 100) / 100,
+    total_score: Math.round(r.avg_score * 100) / 100, // alias para compatibilidade com componentes
+  }));
+
+  setCache('ranking-geral', result);
+  return { data: result, total: result.length };
+}
+
+module.exports = { getRankingForMonth, getGeneralRanking, getMyPosition, buildChecklistProgressMap, invalidateRankingCache };

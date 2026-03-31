@@ -71,6 +71,7 @@ export const monthlyApi = {
 // Ranking endpoints
 export const rankingApi = {
   getRanking: (month) => api.get('/ranking', { params: { month } }),
+  getGeneralRanking: () => api.get('/ranking/general'),
   getMyPosition: (month) => api.get('/ranking/my-position', { params: { month } }),
 }
 
