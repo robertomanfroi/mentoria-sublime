@@ -14,6 +14,9 @@ const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
+// Render e outros proxies: usar IP real do cliente (não o IP do proxy)
+app.set('trust proxy', 1);
+
 // TODO: instalar compression para gzip (npm install compression)
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────────
