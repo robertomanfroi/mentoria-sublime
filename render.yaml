@@ -5,27 +5,26 @@ services:
     plan: free
     buildCommand: npm run build
     startCommand: npm start
-    # Health check — Render valida se o processo está vivo após cada deploy
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 3001
-      # JWT_SECRET fixo (sync: false) — generateValue muda a cada redeploy
-      # e invalida todos os tokens das usuárias logadas. Configure no painel Render.
       - key: JWT_SECRET
         sync: false
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
-      # URL pública do serviço — necessária para o keepalive funcionar
       - key: RENDER_EXTERNAL_URL
         value: https://mentoria-sublime.onrender.com
-      # CORS — permite requisições do frontend em produção
       - key: CORS_ORIGIN
         value: https://mentoria-sublime.onrender.com
+      - key: TURSO_DATABASE_URL
+        value: libsql://mentoria-sublime-robertomanfroi.aws-us-east-1.turso.io
+      - key: TURSO_AUTH_TOKEN
+        sync: false
     disk:
       name: mentoria-data
       mountPath: /app/data
