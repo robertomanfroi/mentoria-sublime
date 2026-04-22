@@ -30,7 +30,7 @@ process.on('uncaughtException', (err) => {
     // (Render hiberna após 15min — ping a cada 14min mantém o serviço vivo)
     if (process.env.NODE_ENV === 'production') {
       const https = require('https');
-      const selfUrl = process.env.RENDER_EXTERNAL_URL || 'https://mentoria-sublime.onrender.com';
+      const selfUrl = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || 'https://mentoria-sublime.onrender.com';
       const pingUrl = `${selfUrl}/health`;
       console.log(`[keepalive] Iniciando self-ping a cada 14min → ${pingUrl}`);
       setInterval(() => {
