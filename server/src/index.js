@@ -26,17 +26,20 @@ process.on('uncaughtException', (err) => {
     console.log(`[server] Health check: http://localhost:${PORT}/health`);
     console.log(`[server] Ambiente: ${process.env.NODE_ENV || 'development'}`);
 
-    // Self-ping a cada 10 minutos para evitar hibernação no Render free tier
-    if (process.env.NODE_ENV === 'production' && process.env.RENDER_EXTERNAL_URL) {
+    // Self-ping a cada 14 minutos para evitar hibernação no Render free tier
+    // (Render hiberna após 15min — ping a cada 14min mantém o serviço vivo)
+    if (process.env.NODE_ENV === 'production') {
       const https = require('https');
+      const selfUrl = process.env.RENDER_EXTERNAL_URL || 'https://mentoria-sublime.onrender.com';
+      const pingUrl = `${selfUrl}/health`;
+      console.log(`[keepalive] Iniciando self-ping a cada 14min → ${pingUrl}`);
       setInterval(() => {
-        const url = `${process.env.RENDER_EXTERNAL_URL}/health`;
-        https.get(url, (res) => {
-          console.log(`[keepalive] ping ${url} → ${res.statusCode}`);
+        https.get(pingUrl, (res) => {
+          console.log(`[keepalive] ping → ${res.statusCode}`);
         }).on('error', (err) => {
           console.warn('[keepalive] erro no ping:', err.message);
         });
-      }, 10 * 60 * 1000); // 10 min
+      }, 14 * 60 * 1000); // 14 min
     }
   });
 })();

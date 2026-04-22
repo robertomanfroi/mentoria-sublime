@@ -45,9 +45,12 @@ const adminLimiter = rateLimit({
 });
 
 // ─── Middlewares globais ──────────────────────────────────────────────────────
+const defaultOrigins = process.env.NODE_ENV === 'production'
+  ? ['https://mentoria-sublime.onrender.com']
+  : ['http://localhost:5173', 'http://localhost:3000'];
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
-  : ['http://localhost:5173', 'http://localhost:3000'];
+  : defaultOrigins;
 
 app.use(cors({
   origin: (origin, callback) => {
