@@ -3,9 +3,14 @@
   "version": "1.0.0",
   "scripts": {
     "build": "cd client && npm install --include=dev && npm run build && cd ../server && npm install --omit=dev",
-    "start": "node server/src/index.js"
+    "start": "node server/src/index.js",
+    "verify-setup": "node scripts/verify-setup.js"
   },
   "engines": {
     "node": "20.x"
+  },
+  "dependencies": {
+    "aiox-core": "5.0.7",
+    "framer-motion": "^12.38.0"
   }
 }

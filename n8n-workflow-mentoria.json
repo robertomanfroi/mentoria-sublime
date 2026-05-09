@@ -1,0 +1,544 @@
+{
+  "name": "Mentoria Sublime — Resumo Automático",
+  "nodes": [
+    {
+      "id": "node_webhook",
+      "name": "Zoom Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "zoom-mentoria-sublime",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "zoom-mentoria",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "node_check_validation",
+      "name": "É Validação de URL?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond_val",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "endpoint.url_validation",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node_hmac",
+      "name": "Calcula HMAC SHA256",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 140],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.ZOOM_WEBHOOK_SECRET_TOKEN;\nconst plainToken = $input.first().json.payload.plainToken;\nconst encryptedToken = crypto\n  .createHmac('sha256', secret)\n  .update(plainToken)\n  .digest('hex');\nreturn [{ json: { plainToken, encryptedToken } }];"
+      }
+    },
+    {
+      "id": "node_respond_validation",
+      "name": "Responde Validação",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 140],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": { "responseCode": 200 }
+      }
+    },
+    {
+      "id": "node_check_recording",
+      "name": "É recording.completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond_rec",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "recording.completed",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node_respond_ignore",
+      "name": "Ignora (200 OK)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 460],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": { "responseCode": 200 }
+      }
+    },
+    {
+      "id": "node_extract_data",
+      "name": "Extrai Dados da Reunião",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 300],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "meetingId",
+              "value": "={{ $json.payload.object.id }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "meetingTopic",
+              "value": "={{ $json.payload.object.topic }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "meetingStartTime",
+              "value": "={{ $json.payload.object.start_time }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "transcriptDownloadUrl",
+              "value": "={{ ($json.payload.object.recording_files || []).find(f => f.file_type === 'TRANSCRIPT')?.download_url || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "downloadToken",
+              "value": "={{ $json.payload.download_token || '' }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node_respond_ok",
+      "name": "Responde 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 300],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": { "responseCode": 200 }
+      }
+    },
+    {
+      "id": "node_wait",
+      "name": "Aguarda 5 Minutos",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1340, 300],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "minutes",
+        "amount": 5
+      }
+    },
+    {
+      "id": "node_zoom_token",
+      "name": "Obtém Token Zoom",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://zoom.us/oauth/token",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "grant_type", "value": "account_credentials" },
+            { "name": "account_id", "value": "={{ $env.ZOOM_ACCOUNT_ID }}" }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "zoom-basic-auth",
+          "name": "Zoom Client ID e Secret"
+        }
+      }
+    },
+    {
+      "id": "node_check_transcript",
+      "name": "Tem Transcrição?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1780, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "cond_trans",
+              "leftValue": "={{ $('Extrai Dados da Reunião').first().json.transcriptDownloadUrl }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node_no_transcript",
+      "name": "WhatsApp — Sem Transcrição",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 460],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL + '/message/sendText/' + $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $env.WHATSAPP_GROUP_MENTORIA_ID, text: '⚠️ *Atenção — Reunião sem transcrição*\\n\\nA reunião *' + $(\\'Extrai Dados da Reunião\\').first().json.meetingTopic + '* foi finalizada, mas não há transcrição disponível no Zoom.\\n\\nVerifique se a transcrição automática está ativada nas configurações da conta Zoom.' }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "node_download_transcript",
+      "name": "Baixa Transcrição VTT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Extrai Dados da Reunião').first().json.transcriptDownloadUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Obtém Token Zoom').first().json.access_token }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "node_parse_vtt",
+      "name": "Processa Transcrição VTT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2220, 300],
+      "parameters": {
+        "jsCode": "const vttContent = $input.first().json.data;\nconst meetingTopic = $('Extrai Dados da Reunião').first().json.meetingTopic;\nconst startTime = $('Extrai Dados da Reunião').first().json.meetingStartTime;\n\n// Remove headers, timestamps e linhas vazias do VTT\nconst lines = vttContent.split('\\n');\nconst textLines = [];\nfor (const line of lines) {\n  const t = line.trim();\n  if (\n    t === 'WEBVTT' ||\n    t === '' ||\n    /^\\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\s-->/.test(t) ||\n    /^\\d+$/.test(t)\n  ) continue;\n  textLines.push(t);\n}\n\nconst transcript = textLines.join('\\n');\n\n// Formata data em português\nconst date = new Date(startTime);\nconst months = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];\nconst dateFormatted = date.getDate() + ' de ' + months[date.getMonth()] + ' de ' + date.getFullYear();\n\nreturn [{ json: { transcript, meetingTopic, dateFormatted } }];"
+      }
+    },
+    {
+      "id": "node_claude",
+      "name": "Claude — Gera Resumo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2440, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 8000, messages: [{ role: 'user', content: 'Você vai analisar a transcrição desta mentoria e organizar as informações de forma estratégica, clara e acionável.\\n\\nREUNIÃO: ' + $json.meetingTopic + '\\nDATA: ' + $json.dateFormatted + '\\n\\nTRANSCRIÇÃO:\\n' + $json.transcript + '\\n\\n---\\n\\n1. ABA INICIAL — INSIGHTS GERAIS (PARA TODAS)\\n\\nCrie uma primeira seção com:\\n* Lista de insights gerais extraídos da mentoria\\n* Orientações práticas que servem para todas as mentoradas\\n* Inclua aprendizados ditos para pessoas específicas mas aplicáveis por qualquer uma\\n* Organize em tópicos claros, objetivos e acionáveis\\n* Priorize o que impacta resultado (vendas, posicionamento, conteúdo, consistência, estratégia)\\n\\n---\\n\\n2. ABA POR MENTORADA — ANÁLISE INDIVIDUAL\\n\\nPara cada mentorada citada, crie:\\n\\n### Nome da mentorada\\n\\n#### Situação (resumo direto):\\nContexto, desafio ou momento dela\\n\\n#### Orientações estratégicas:\\nTudo que foi orientado para ela\\n\\n#### Ações recomendadas:\\nOrientações transformadas em ações claras e executáveis\\n\\n#### Conteúdos sugeridos (se houver):\\n* Ideia do conteúdo\\n* Gancho (frase inicial pronta)\\n* Desenvolvimento\\n* Formato (Reels, Stories, Carrossel)\\n* CTA sugerido\\n\\n---\\n\\nREGRAS:\\n* Não mencionar quem disse as orientações\\n* Escrever de forma direta, sem enrolação\\n* Foco em clareza e aplicação prática\\n* Sempre específico e acionável\\n\\nAo final, inclua exatamente esta linha:\\nNOME_REUNIAO: [nome curto da reunião ou mentorada principal, sem acentos e sem caracteres especiais]' }] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "node_format_response",
+      "name": "Formata Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2660, 300],
+      "parameters": {
+        "jsCode": "const claudeData = $input.first().json;\nconst content = claudeData.content[0].text;\n\n// Extrai NOME_REUNIAO da última linha\nconst lines = content.split('\\n');\nlet nomeCurto = '';\nlet resumoContent = content;\n\nfor (let i = lines.length - 1; i >= 0; i--) {\n  const line = lines[i].trim();\n  if (line.startsWith('NOME_REUNIAO:')) {\n    nomeCurto = line.replace('NOME_REUNIAO:', '').trim();\n    resumoContent = lines.slice(0, i).join('\\n').trim();\n    break;\n  }\n}\n\nif (!nomeCurto) {\n  nomeCurto = $('Processa Transcrição VTT').first().json.meetingTopic || 'Reuniao';\n}\n\nconst dateFormatted = $('Processa Transcrição VTT').first().json.dateFormatted;\nconst docName = 'Resumo Mentoria Sublime - ' + nomeCurto + ' - ' + dateFormatted;\n\nreturn [{ json: { resumoContent, nomeCurto, dateFormatted, docName } }];"
+      }
+    },
+    {
+      "id": "node_copy_drive",
+      "name": "Copia Modelo no Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [2880, 300],
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_DRIVE_TEMPLATE_DOC_ID }}",
+          "mode": "id"
+        },
+        "name": "={{ $json.docName }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1si0pPBrHXbxUCz6TN1uH-EF39Md5n7Xs",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "google-oauth2",
+          "name": "Google Drive OAuth2"
+        }
+      }
+    },
+    {
+      "id": "node_update_doc",
+      "name": "Substitui Conteúdo no Doc",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3100, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://docs.googleapis.com/v1/documents/' + $('Copia Modelo no Drive').first().json.id + ':batchUpdate' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDocsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ requests: [ { replaceAllText: { containsText: { text: '{{CONTEUDO}}', matchCase: true }, replaceText: $('Formata Resposta').first().json.resumoContent } }, { replaceAllText: { containsText: { text: '{{DATA}}', matchCase: true }, replaceText: $('Formata Resposta').first().json.dateFormatted } }, { replaceAllText: { containsText: { text: '{{NOME}}', matchCase: true }, replaceText: $('Formata Resposta').first().json.nomeCurto } } ] }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "google-oauth2",
+          "name": "Google Docs OAuth2"
+        }
+      }
+    },
+    {
+      "id": "node_export_pdf",
+      "name": "Exporta PDF do Google Doc",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://www.googleapis.com/drive/v3/files/' + $('Copia Modelo no Drive').first().json.id + '/export' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "mimeType", "value": "application/pdf" }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "pdfData"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "google-oauth2",
+          "name": "Google Drive OAuth2"
+        }
+      }
+    },
+    {
+      "id": "node_upload_pdf",
+      "name": "Salva PDF no Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [3540, 300],
+      "parameters": {
+        "operation": "upload",
+        "name": "={{ $('Formata Resposta').first().json.docName + '.pdf' }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1si0pPBrHXbxUCz6TN1uH-EF39Md5n7Xs",
+          "mode": "id"
+        },
+        "binaryPropertyName": "pdfData",
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "google-oauth2",
+          "name": "Google Drive OAuth2"
+        }
+      }
+    },
+    {
+      "id": "node_whatsapp",
+      "name": "Envia no Grupo WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3760, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL + '/message/sendText/' + $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $env.WHATSAPP_GROUP_MENTORIA_ID, text: '✅ *Resumo pronto*\\n\\nO resumo da Mentoria Sublime com *' + $('Formata Resposta').first().json.nomeCurto + '* já foi organizado e salvo no Drive.\\n\\n📄 Arquivo: ' + $('Formata Resposta').first().json.docName + '\\n\\n🔗 Drive: https://drive.google.com/drive/folders/1si0pPBrHXbxUCz6TN1uH-EF39Md5n7Xs' }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Zoom Webhook": {
+      "main": [
+        [{ "node": "É Validação de URL?", "type": "main", "index": 0 }]
+      ]
+    },
+    "É Validação de URL?": {
+      "main": [
+        [{ "node": "Calcula HMAC SHA256", "type": "main", "index": 0 }],
+        [{ "node": "É recording.completed?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Calcula HMAC SHA256": {
+      "main": [
+        [{ "node": "Responde Validação", "type": "main", "index": 0 }]
+      ]
+    },
+    "É recording.completed?": {
+      "main": [
+        [{ "node": "Extrai Dados da Reunião", "type": "main", "index": 0 }],
+        [{ "node": "Ignora (200 OK)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extrai Dados da Reunião": {
+      "main": [
+        [{ "node": "Responde 200 OK", "type": "main", "index": 0 }]
+      ]
+    },
+    "Responde 200 OK": {
+      "main": [
+        [{ "node": "Aguarda 5 Minutos", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aguarda 5 Minutos": {
+      "main": [
+        [{ "node": "Obtém Token Zoom", "type": "main", "index": 0 }]
+      ]
+    },
+    "Obtém Token Zoom": {
+      "main": [
+        [{ "node": "Tem Transcrição?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Tem Transcrição?": {
+      "main": [
+        [{ "node": "Baixa Transcrição VTT", "type": "main", "index": 0 }],
+        [{ "node": "Log Sem Transcrição", "type": "main", "index": 0 }]
+      ]
+    },
+    "Baixa Transcrição VTT": {
+      "main": [
+        [{ "node": "Processa Transcrição VTT", "type": "main", "index": 0 }]
+      ]
+    },
+    "Processa Transcrição VTT": {
+      "main": [
+        [{ "node": "Claude — Gera Resumo", "type": "main", "index": 0 }]
+      ]
+    },
+    "Claude — Gera Resumo": {
+      "main": [
+        [{ "node": "Formata Resposta", "type": "main", "index": 0 }]
+      ]
+    },
+    "Formata Resposta": {
+      "main": [
+        [{ "node": "Copia Modelo no Drive", "type": "main", "index": 0 }]
+      ]
+    },
+    "Copia Modelo no Drive": {
+      "main": [
+        [{ "node": "Substitui Conteúdo no Doc", "type": "main", "index": 0 }]
+      ]
+    },
+    "Substitui Conteúdo no Doc": {
+      "main": [
+        [{ "node": "Exporta PDF do Google Doc", "type": "main", "index": 0 }]
+      ]
+    },
+    "Exporta PDF do Google Doc": {
+      "main": [
+        [{ "node": "Salva PDF no Drive", "type": "main", "index": 0 }]
+      ]
+    },
+    "Salva PDF no Drive": {
+      "main": [
+        [{ "node": "Envia no Grupo WhatsApp", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
