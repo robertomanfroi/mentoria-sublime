@@ -22,9 +22,8 @@ No documento modelo da Mentoria Sublime, adicione 3 placeholders onde o conteúd
 - Onde vai o resumo completo → escreva: `{{CONTEUDO}}`
 
 Depois pegue o ID do documento:
-- Abra o doc no Drive
-- A URL é: `docs.google.com/document/d/ESTE_É_O_ID/edit`
-- Copie esse ID — vai usar no Passo 4
+- ID já identificado: `1TbVI_xvCfTn6NC4cqmm09_P9LZOV8kmd`
+- Link: https://docs.google.com/document/d/1TbVI_xvCfTn6NC4cqmm09_P9LZOV8kmd/edit
 
 ---
 
@@ -104,7 +103,7 @@ Adicionar estas variáveis:
 | `ZOOM_ACCOUNT_ID` | Account ID do app Zoom |
 | `ZOOM_WEBHOOK_SECRET_TOKEN` | Secret Token do app Zoom |
 | `ANTHROPIC_API_KEY` | sk-ant-... (está em /home/roberto/.env) |
-| `GOOGLE_DRIVE_TEMPLATE_DOC_ID` | ID do documento modelo (Passo 1) |
+| `GOOGLE_DRIVE_TEMPLATE_DOC_ID` | `1TbVI_xvCfTn6NC4cqmm09_P9LZOV8kmd` |
 | `EVOLUTION_API_URL` | URL da sua Evolution API (ex: https://evolution-xxx.up.railway.app) |
 | `EVOLUTION_API_KEY` | API Key da Evolution API |
 | `EVOLUTION_INSTANCE` | Nome da instância criada (ex: mentoria-sublime) |
