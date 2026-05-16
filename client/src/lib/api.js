@@ -38,6 +38,7 @@ export const authApi = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (data) => api.post('/auth/register', data),
   me: () => api.get('/auth/me'),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
 }
 
 // User/mentoradas endpoints
@@ -85,6 +86,8 @@ export const prizesApi = {
 export const adminApi = {
   getMentoradas: (page, limit) => api.get('/admin/users', { params: { page, limit } }),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  resetUserPassword: (id, new_password) => api.put(`/admin/users/${id}/reset-password`, { new_password }),
+  getPasswordResetRequests: () => api.get('/admin/password-reset-requests'),
   getPendingValidations: (month) => api.get('/admin/validations', { params: month ? { month } : {} }),
   validateSubmission: (id, approved) =>
     api.put(`/admin/validations/${id}`, { approved }),

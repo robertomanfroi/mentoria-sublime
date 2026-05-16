@@ -49,4 +49,8 @@ router.get('/export/ranking', adminController.exportCSV);
 router.get('/settings', adminController.getSettings);
 router.put('/settings', adminController.updateSettings);
 
+// Password Reset
+router.get('/password-reset-requests', adminController.listPasswordResetRequests);
+router.put('/users/:id/reset-password', adminController.resetUserPassword);
+
 module.exports = router;

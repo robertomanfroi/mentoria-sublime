@@ -27,4 +27,13 @@ async function me(req, res, next) {
   }
 }
 
-module.exports = { register, login, me };
+async function forgotPassword(req, res, next) {
+  try {
+    const result = await authService.forgotPassword(req.body);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { register, login, me, forgotPassword };

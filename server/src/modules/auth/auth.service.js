@@ -110,4 +110,20 @@ async function me(userId) {
   return mapUser(row);
 }
 
-module.exports = { register, login, me, mapUser };
+async function forgotPassword({ email }) {
+  if (!email) {
+    const err = new Error('E-mail é obrigatório.');
+    err.status = 400;
+    throw err;
+  }
+  const user = await prepare('SELECT id FROM users WHERE email = ? AND deleted_at IS NULL').get(email.toLowerCase().trim());
+  // Retorna sucesso mesmo se e-mail não existe (segurança)
+  if (user) {
+    // Cancela solicitações anteriores pendentes
+    await prepare("UPDATE password_reset_requests SET status = 'cancelled' WHERE user_id = ? AND status = 'pending'").run(user.id);
+    await prepare('INSERT INTO password_reset_requests (user_id, status) VALUES (?, ?)').run(user.id, 'pending');
+  }
+  return { message: 'Se o e-mail existir, a solicitação foi registrada.' };
+}
+
+module.exports = { register, login, me, mapUser, forgotPassword };

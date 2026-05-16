@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const { prepare, executeTransaction } = require('../../config/database');
 const { calculateMonthRanking } = require('../../utils/rankingCalculator');
 const { buildChecklistProgressMap, invalidateRankingCache } = require('../ranking/ranking.service');
@@ -388,6 +389,36 @@ async function updateSettings(newSettings) {
   return merged;
 }
 
+async function resetUserPassword(userId, { new_password }) {
+  if (!new_password || new_password.length < 6) {
+    const err = new Error('A senha deve ter pelo menos 6 caracteres.');
+    err.status = 400;
+    throw err;
+  }
+  const user = await prepare('SELECT id FROM users WHERE id = ? AND deleted_at IS NULL').get(userId);
+  if (!user) {
+    const err = new Error('Usuário não encontrado.');
+    err.status = 404;
+    throw err;
+  }
+  const password_hash = bcrypt.hashSync(new_password, 10);
+  // APENAS o password_hash é alterado — ZERO outros campos
+  await prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(password_hash, userId);
+  // Marca todas as solicitações pendentes desse usuário como resolvidas
+  await prepare("UPDATE password_reset_requests SET status = 'resolved' WHERE user_id = ? AND status = 'pending'").run(userId);
+  return { message: 'Senha redefinida com sucesso.' };
+}
+
+async function listPasswordResetRequests() {
+  return await prepare(`
+    SELECT prr.id, prr.user_id, prr.status, prr.created_at, u.name, u.email
+    FROM password_reset_requests prr
+    JOIN users u ON u.id = prr.user_id
+    WHERE prr.status = 'pending'
+    ORDER BY prr.created_at DESC
+  `).all();
+}
+
 module.exports = {
   listUsers, updateUser, deleteUser,
   listChecklistItems, addChecklistItem, updateChecklistItem, deleteChecklistItem,
@@ -397,4 +428,5 @@ module.exports = {
   exportCSV,
   getSettings, updateSettings,
   getMonthDiagnostic,
+  resetUserPassword, listPasswordResetRequests,
 };

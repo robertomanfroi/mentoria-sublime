@@ -144,6 +144,18 @@ async function updateSettings(req, res, next) {
   try { res.json(await adminService.updateSettings(req.body)); } catch (err) { next(err); }
 }
 
+// ─── PASSWORD RESET ───────────────────────────────────────────────────────────
+
+async function resetUserPassword(req, res, next) {
+  try {
+    res.json(await adminService.resetUserPassword(req.params.id, req.body));
+  } catch (err) { next(err); }
+}
+
+async function listPasswordResetRequests(req, res, next) {
+  try { res.json(await adminService.listPasswordResetRequests()); } catch (err) { next(err); }
+}
+
 module.exports = {
   listUsers, updateUser, deleteUser,
   listChecklistItems, addChecklistItem, updateChecklistItem, deleteChecklistItem,
@@ -153,4 +165,5 @@ module.exports = {
   exportCSV,
   getSettings, updateSettings,
   getMonthDiagnostic,
+  resetUserPassword, listPasswordResetRequests,
 };

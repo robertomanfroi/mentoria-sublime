@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, X } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { authApi } from '../../lib/api'
 
 export default function LoginPage() {
   const navigate  = useNavigate()
@@ -12,6 +13,35 @@ export default function LoginPage() {
   const [error,   setError]   = useState('')
   const [loading, setLoading] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
+
+  // Esqueci minha senha
+  const [forgotOpen,    setForgotOpen]    = useState(false)
+  const [forgotEmail,   setForgotEmail]   = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotError,   setForgotError]   = useState('')
+  const [forgotSuccess, setForgotSuccess] = useState('')
+
+  async function handleForgotSubmit(e) {
+    e.preventDefault()
+    setForgotLoading(true)
+    setForgotError('')
+    setForgotSuccess('')
+    try {
+      const res = await authApi.forgotPassword(forgotEmail)
+      setForgotSuccess(res.data?.message || 'Solicitação registrada com sucesso.')
+    } catch (err) {
+      setForgotError(err?.response?.data?.error || err?.response?.data?.message || 'Erro ao enviar solicitação.')
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  function closeForgotModal() {
+    setForgotOpen(false)
+    setForgotEmail('')
+    setForgotError('')
+    setForgotSuccess('')
+  }
 
   const from = location.state?.from?.pathname || '/dashboard'
 
@@ -291,8 +321,22 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {/* Link esqueci minha senha */}
+          <p className="mt-4 text-center text-sm font-body" style={{ color: 'rgba(41,41,41,0.5)' }}>
+            <button
+              type="button"
+              onClick={() => setForgotOpen(true)}
+              className="font-semibold transition-colors bg-transparent border-none p-0 cursor-pointer"
+              style={{ color: '#604E44' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#8e7028'}
+              onMouseLeave={e => e.currentTarget.style.color = '#604E44'}
+            >
+              Esqueci minha senha
+            </button>
+          </p>
+
           {/* Link cadastro */}
-          <p className="mt-7 text-center text-sm font-body" style={{ color: 'rgba(41,41,41,0.5)' }}>
+          <p className="mt-3 text-center text-sm font-body" style={{ color: 'rgba(41,41,41,0.5)' }}>
             Ainda não tem conta?{' '}
             <Link
               to="/register"
@@ -306,6 +350,126 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+
+      {/* Modal esqueci minha senha */}
+      {forgotOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={e => { if (e.target === e.currentTarget) closeForgotModal() }}
+        >
+          <div
+            className="w-full max-w-sm mx-4 rounded-2xl p-6 shadow-2xl"
+            style={{ background: '#F6F2E7', fontFamily: 'Montserrat, sans-serif' }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold" style={{ fontFamily: 'Bride, Georgia, serif', color: '#3D281C' }}>
+                Esqueci minha senha
+              </h2>
+              <button
+                type="button"
+                onClick={closeForgotModal}
+                className="p-1 rounded-lg transition-colors"
+                style={{ color: '#604E44' }}
+                aria-label="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-sm font-body mb-4" style={{ color: 'rgba(41,41,41,0.6)' }}>
+              Digite seu e-mail e a administradora receberá sua solicitação de redefinição de senha.
+            </p>
+
+            {!forgotSuccess ? (
+              <form onSubmit={handleForgotSubmit} className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="forgot-email"
+                    className="block text-xs font-body font-semibold tracking-[0.1em] uppercase mb-2"
+                    style={{ color: '#604E44' }}
+                  >
+                    E-mail
+                  </label>
+                  <div className="relative">
+                    <Mail
+                      size={15}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ color: '#C7AA89' }}
+                    />
+                    <input
+                      id="forgot-email"
+                      type="email"
+                      value={forgotEmail}
+                      onChange={e => { setForgotEmail(e.target.value); setForgotError('') }}
+                      required
+                      placeholder="seu@email.com"
+                      className="w-full pl-10 pr-4 py-3 text-sm font-body rounded-xl outline-none transition-all duration-200"
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid rgba(199,170,137,0.4)',
+                        color: '#292929',
+                      }}
+                      onFocus={e => {
+                        e.target.style.border = '1px solid #C7AA89'
+                        e.target.style.boxShadow = '0 0 0 3px rgba(199,170,137,0.25)'
+                      }}
+                      onBlur={e => {
+                        e.target.style.border = '1px solid rgba(199,170,137,0.4)'
+                        e.target.style.boxShadow = 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {forgotError && (
+                  <div
+                    className="px-4 py-3 rounded-xl text-sm font-body"
+                    style={{ background: 'rgba(192,57,43,0.07)', border: '1px solid rgba(192,57,43,0.2)', color: '#c0392b' }}
+                  >
+                    {forgotError}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={closeForgotModal}
+                    className="flex-1 py-3 rounded-xl text-sm font-body font-semibold transition-all duration-200"
+                    style={{ background: 'transparent', border: '1px solid rgba(199,170,137,0.4)', color: '#604E44' }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="flex-1 py-3 rounded-xl text-sm font-body font-semibold transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
+                    style={{ background: '#3D281C', color: '#F6F2E7' }}
+                  >
+                    {forgotLoading ? 'Enviando…' : 'Solicitar'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div
+                  className="px-4 py-3 rounded-xl text-sm font-body"
+                  style={{ background: 'rgba(142,112,40,0.08)', border: '1px solid rgba(142,112,40,0.25)', color: '#8e7028' }}
+                >
+                  {forgotSuccess}
+                </div>
+                <button
+                  type="button"
+                  onClick={closeForgotModal}
+                  className="w-full py-3 rounded-xl text-sm font-body font-semibold"
+                  style={{ background: '#3D281C', color: '#F6F2E7' }}
+                >
+                  Fechar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
