@@ -98,7 +98,16 @@ export default function MonthlyPage() {
   }, [monthData])
 
   function handleFile(file) {
-    if (!file || !file.type.startsWith('image/')) return
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('Arquivo inválido. Envie uma imagem (PNG, JPG ou WebP).')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Imagem muito grande. O tamanho máximo é 5MB.')
+      return
+    }
+    setError('')
     setPrintFile(file)
     const reader = new FileReader()
     reader.onloadend = () => setPrintPreview(reader.result)
