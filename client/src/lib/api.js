@@ -105,6 +105,7 @@ export const adminApi = {
       responseType: 'blob',
     }),
   getDiagnostic: (month) => api.get('/admin/diagnostic', { params: { month } }),
+  getMonthlyHistory: () => api.get('/admin/monthly-history'),
 }
 
 export default api

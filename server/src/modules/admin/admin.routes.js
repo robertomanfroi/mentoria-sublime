@@ -40,6 +40,7 @@ router.put('/prizes/:id', adminController.updatePrize);
 // Ranking
 router.post('/ranking/calculate', adminController.calculateRanking);
 router.get('/diagnostic', adminController.getMonthDiagnostic);
+router.get('/monthly-history', adminController.getMonthlyHistory);
 
 // Export
 router.get('/export', adminController.exportCSV);

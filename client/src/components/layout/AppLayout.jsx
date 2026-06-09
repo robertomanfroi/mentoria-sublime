@@ -10,6 +10,7 @@ const pageTitles = {
   '/prizes': 'Premiações',
   '/admin/mentoradas': 'Mentoradas',
   '/admin/validations': 'Validações Pendentes',
+  '/admin/monthly-history': 'Histórico Mensal',
   '/admin/checklist': 'Gerenciar Checklist',
   '/admin/prizes': 'Gerenciar Prêmios',
   '/admin/export': 'Exportar Dados',

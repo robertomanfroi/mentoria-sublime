@@ -112,6 +112,10 @@ async function getMonthDiagnostic(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function getMonthlyHistory(req, res, next) {
+  try { res.json(await adminService.getMonthlyHistory()); } catch (err) { next(err); }
+}
+
 // ─── RANKING ──────────────────────────────────────────────────────────────────
 
 async function calculateRanking(req, res, next) {
@@ -164,6 +168,6 @@ module.exports = {
   calculateRanking,
   exportCSV,
   getSettings, updateSettings,
-  getMonthDiagnostic,
+  getMonthDiagnostic, getMonthlyHistory,
   resetUserPassword, listPasswordResetRequests,
 };

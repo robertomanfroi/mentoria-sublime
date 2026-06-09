@@ -17,6 +17,7 @@ import ProfilePage from '../pages/ProfilePage'
 
 // Admin pages
 import MentoradasPage from '../pages/admin/MentoradasPage'
+import MonthlyHistoryPage from '../pages/admin/MonthlyHistoryPage'
 import ValidationsPage from '../pages/admin/ValidationsPage'
 import ChecklistAdminPage from '../pages/admin/ChecklistAdminPage'
 import PrizesAdminPage from '../pages/admin/PrizesAdminPage'
@@ -87,6 +88,14 @@ const router = createBrowserRouter([
         element: (
           <AdminRoute>
             <ValidationsPage />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: 'admin/monthly-history',
+        element: (
+          <AdminRoute>
+            <MonthlyHistoryPage />
           </AdminRoute>
         ),
       },

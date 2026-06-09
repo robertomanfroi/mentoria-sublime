@@ -209,6 +209,60 @@ async function getMonthDiagnostic(month) {
   };
 }
 
+async function getMonthlyHistory() {
+  // Todas as mentoradas (linhas da tabela cruzada)
+  const users = await prepare(`
+    SELECT u.id, u.name, u.instagram_handle, u.profile_photo
+    FROM users u
+    WHERE u.role = 'mentorada' AND u.deleted_at IS NULL
+    ORDER BY u.name ASC
+  `).all();
+
+  // Todos os registros mensais de mentoradas (células da tabela)
+  const rows = await prepare(`
+    SELECT md.user_id, md.month, md.followers_count, md.followers_previous,
+           md.revenue, md.revenue_previous, md.validated_by_admin,
+           md.instagram_proof_image, md.created_at
+    FROM monthly_data md
+    JOIN users u ON u.id = md.user_id AND u.role = 'mentorada' AND u.deleted_at IS NULL
+    ORDER BY md.month ASC
+  `).all();
+
+  // Lista ordenada de meses distintos (colunas da tabela cruzada)
+  const months = [...new Set(rows.map(r => r.month))].sort();
+
+  // Índice user_id+month -> célula enriquecida
+  const cells = {};
+  for (const r of rows) {
+    const followersGained = (r.followers_count || 0) - (r.followers_previous || 0);
+    const revenueGrowthPct = (r.revenue && r.revenue_previous)
+      ? Math.round(((r.revenue - r.revenue_previous) / r.revenue_previous) * 1000) / 10
+      : null;
+    cells[`${r.user_id}|${r.month}`] = {
+      followers_current: r.followers_count ?? null,
+      followers_previous: r.followers_previous ?? null,
+      followers_gained: followersGained,
+      revenue_current: r.revenue ?? null,
+      revenue_previous: r.revenue_previous ?? null,
+      revenue_growth_pct: revenueGrowthPct,
+      validated: r.validated_by_admin === 1,
+      proof_url: r.instagram_proof_image ? `/uploads/proofs/${r.instagram_proof_image}` : null,
+      created_at: r.created_at,
+    };
+  }
+
+  // Monta cada mentorada com suas células por mês
+  const data = users.map(u => ({
+    id: u.id,
+    name: u.name,
+    instagram_handle: u.instagram_handle,
+    avatar_url: u.profile_photo ? `/uploads/${u.profile_photo}` : null,
+    months: Object.fromEntries(months.map(m => [m, cells[`${u.id}|${m}`] || null])),
+  }));
+
+  return { months, data };
+}
+
 async function approveAllPending(month) {
   if (!/^\d{4}-\d{2}$/.test(month)) {
     const err = new Error('Formato de mês inválido.'); err.status = 400; throw err;
@@ -427,6 +481,6 @@ module.exports = {
   calculateAndSaveRanking,
   exportCSV,
   getSettings, updateSettings,
-  getMonthDiagnostic,
+  getMonthDiagnostic, getMonthlyHistory,
   resetUserPassword, listPasswordResetRequests,
 };

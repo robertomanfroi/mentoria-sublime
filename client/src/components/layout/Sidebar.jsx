@@ -11,6 +11,7 @@ import {
   ListChecks,
   Award,
   Download,
+  History,
   Menu,
   X,
   LogOut,
@@ -30,6 +31,7 @@ const navLinks = [
 const adminLinks = [
   { to: '/admin/mentoradas',  icon: Users,      label: 'Mentoradas'     },
   { to: '/admin/validations', icon: ShieldCheck, label: 'Validações'     },
+  { to: '/admin/monthly-history', icon: History, label: 'Histórico Mensal'},
   { to: '/admin/checklist',   icon: ListChecks,  label: 'Checklist Admin'},
   { to: '/admin/prizes',      icon: Award,       label: 'Prêmios Admin'  },
   { to: '/admin/export',      icon: Download,    label: 'Exportar'       },
