@@ -102,7 +102,7 @@ export default function ValidationCard({ submission, onValidated }) {
         <a
           href={
             submission.print_url ||
-            `/uploads/${submission.instagram_proof_image}`
+            `/uploads/proofs/${submission.instagram_proof_image}`
           }
           target="_blank"
           rel="noopener noreferrer"
