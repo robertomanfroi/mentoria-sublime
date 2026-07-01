@@ -20,7 +20,8 @@ export function AuthProvider({ children }) {
 
       try {
         const res = await authApi.me()
-        setUser(res.data.user)
+        // /auth/me retorna o usuário direto (sem wrapper { user })
+        setUser(res.data.user || res.data)
       } catch {
         removeToken()
       } finally {
