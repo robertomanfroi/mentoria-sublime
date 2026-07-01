@@ -40,6 +40,20 @@ export default function RegisterPage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+
+    if (!form.name.trim()) {
+      setError('Informe seu nome.')
+      return
+    }
+    if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) {
+      setError('Informe um e-mail válido.')
+      return
+    }
+    if (!form.password || form.password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.')
+      return
+    }
+
     setLoading(true)
     setError('')
 
@@ -125,7 +139,7 @@ export default function RegisterPage() {
           />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <Input
             label="Seu nome"
             type="text"

@@ -14,6 +14,9 @@ const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
+// Não expor tecnologia do servidor
+app.disable('x-powered-by');
+
 // Render e outros proxies: usar IP real do cliente (não o IP do proxy)
 app.set('trust proxy', 1);
 
@@ -99,6 +102,9 @@ if (fs.existsSync(clientBuild)) {
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 

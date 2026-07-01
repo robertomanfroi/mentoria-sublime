@@ -22,10 +22,12 @@ api.interceptors.request.use(
 )
 
 // Response interceptor: 401 redireciona para /login
+// (exceto em rotas de auth — o 401 de login/register é tratado na própria página)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthRoute = error.config?.url?.startsWith('/auth/')
+    if (error.response?.status === 401 && !isAuthRoute) {
       removeToken()
       window.location.href = '/login'
     }

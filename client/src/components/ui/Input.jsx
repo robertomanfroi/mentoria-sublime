@@ -51,8 +51,8 @@ export default function Input({
           <label
             htmlFor={inputId}
             className={cn(
-              'absolute left-4 transition-all duration-200 pointer-events-none font-body',
-              Icon && 'left-10',
+              'absolute transition-all duration-200 pointer-events-none font-body',
+              Icon ? 'left-10' : 'left-4',
               'peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:text-dark/40',
               'peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:text-gold',
               focused || hasValue
