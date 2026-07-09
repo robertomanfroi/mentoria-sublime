@@ -9,12 +9,13 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner'
 
 export default function ValidationsPage() {
   const [calculatingMonth, setCalculatingMonth] = useState(null)
-  const [approvingAll, setApprovingAll]         = useState(false)
+  const [approvingAll, setApprovingAll]         = useState(null) // month sendo aprovado
   const [calcResult, setCalcResult]             = useState('')
   const [showDiag, setShowDiag]                 = useState(false)
 
   const currentMonth = getCurrentMonth()
-  const fn = useCallback(() => adminApi.getPendingValidations(currentMonth), [currentMonth])
+  // Sem month: busca pendências de TODOS os meses
+  const fn = useCallback(() => adminApi.getPendingValidations(), [])
   const { data, loading, refetch } = useApi(fn)
 
   const diagFn = useCallback(() => adminApi.getDiagnostic(currentMonth), [currentMonth])
@@ -22,6 +23,13 @@ export default function ValidationsPage() {
 
   const submissions = data?.data || data?.submissions || data || []
   const totalSubmissions = data?.total ?? submissions.length
+
+  // Agrupa por mês (mais recente primeiro — backend já ordena)
+  const byMonth = submissions.reduce((acc, s) => {
+    (acc[s.month] = acc[s.month] || []).push(s)
+    return acc
+  }, {})
+  const monthKeys = Object.keys(byMonth).sort().reverse()
 
   async function handleCalculateRanking() {
     const month = currentMonth
@@ -43,9 +51,8 @@ export default function ValidationsPage() {
     }
   }
 
-  async function handleApproveAll() {
-    const month = currentMonth
-    setApprovingAll(true)
+  async function handleApproveAll(month = currentMonth) {
+    setApprovingAll(month)
     setCalcResult('')
     try {
       const res = await adminApi.approveAllPending(month)
@@ -58,7 +65,7 @@ export default function ValidationsPage() {
     } catch (err) {
       setCalcResult('Erro: ' + (err?.response?.data?.error || err?.message))
     } finally {
-      setApprovingAll(false)
+      setApprovingAll(null)
     }
   }
 
@@ -80,8 +87,8 @@ export default function ValidationsPage() {
             <Button
               variant="primary"
               size="md"
-              loading={approvingAll}
-              onClick={handleApproveAll}
+              loading={approvingAll === currentMonth}
+              onClick={() => handleApproveAll()}
               className="gap-2"
             >
               <CheckCheck size={15} />
@@ -162,13 +169,39 @@ export default function ValidationsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {submissions.map((submission) => (
-            <ValidationCard
-              key={submission.id}
-              submission={submission}
-              onValidated={() => refetch()}
-            />
+        <div className="space-y-8">
+          {monthKeys.map((month) => (
+            <div key={month}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display text-lg font-semibold text-dark">
+                  {formatMonth(month)}
+                  <span className="ml-2 text-sm font-body font-normal text-dark/50">
+                    {byMonth[month].length} pendente(s)
+                  </span>
+                </h2>
+                {month !== currentMonth && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    loading={approvingAll === month}
+                    onClick={() => handleApproveAll(month)}
+                    className="gap-1.5"
+                  >
+                    <CheckCheck size={14} />
+                    Aprovar mês inteiro
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {byMonth[month].map((submission) => (
+                  <ValidationCard
+                    key={submission.id}
+                    submission={submission}
+                    onValidated={() => refetch()}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}

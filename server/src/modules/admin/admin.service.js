@@ -164,20 +164,22 @@ async function deleteChecklistItem(id) {
 }
 
 async function listPendingValidations(month, { page = 1, limit = 50 } = {}) {
-  const currentMonth = month || new Date().toISOString().slice(0, 7);
+  // Sem month: retorna pendências de TODOS os meses (mais recentes primeiro).
   const offset = (Math.max(1, page) - 1) * limit;
+  const monthFilter = month ? 'AND md.month = ?' : '';
+  const params = month ? [month] : [];
   const rows = await prepare(`
     SELECT md.*, u.name, u.email, u.instagram_handle,
            u.profile_photo
     FROM monthly_data md
     JOIN users u ON u.id = md.user_id
-    WHERE md.validated_by_admin = 0 AND md.month = ?
-    ORDER BY md.created_at DESC
+    WHERE md.validated_by_admin = 0 ${monthFilter}
+    ORDER BY md.month DESC, md.created_at DESC
     LIMIT ? OFFSET ?
-  `).all(currentMonth, limit, offset);
+  `).all(...params, limit, offset);
   const totalRow = await prepare(
-    'SELECT COUNT(*) as cnt FROM monthly_data WHERE validated_by_admin = 0 AND month = ?'
-  ).get(currentMonth);
+    `SELECT COUNT(*) as cnt FROM monthly_data md WHERE md.validated_by_admin = 0 ${monthFilter}`
+  ).get(...params);
   return { data: rows, total: totalRow.cnt, page, limit };
 }
 
