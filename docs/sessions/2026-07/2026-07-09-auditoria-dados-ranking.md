@@ -33,3 +33,22 @@ Auditoria completa do fluxo aluna → envio de resultados → validação admin 
 - `server/src/utils/rankingCalculator.js` / `formatters.js`
 - `client/src/pages/MonthlyPage.jsx`, `client/src/lib/utils.js`
 - `client/src/components/admin/ValidationCard.jsx`, `client/src/pages/admin/ValidationsPage.jsx`
+
+---
+
+## Rodada 2 — Proteção de histórico (mesma sessão)
+
+Auditoria de operações destrutivas que perdiam histórico. 4 commits adicionais:
+
+| Commit | Correção |
+|---|---|
+| `f7d1f3f` | Recálculo de ranking arquiva snapshots em `ranking_snapshots_history` (migration 013) antes do DELETE — nos 2 caminhos (admin manual + auto-save defensivo no ranking.service) |
+| `09c1b30` | Trilha de auditoria `validation_audit` (migration 014): setValidation grava estado anterior→novo (status, motivo, admin); approveAllPending grava em massa |
+| `dfc2e73` | `deleteChecklistItem` virou soft delete (`active = 0`); todas as contagens de completed (checklist.getProgress, ranking.buildChecklistProgressMap, admin.listUsers, admin.exportCSV) ganharam JOIN `active = 1` para evitar completed > total |
+| `4a60432` | Listagem admin de checklist filtra `active = 1` (frontend não conhece a coluna) |
+
+### Notas
+- Reativação de item de checklist possível via API `updateChecklistItem({ active: 1 })` — sem UI.
+- Backend-only: sem rebuild do client/dist.
+- NÃO recalcular meses antigos indiscriminadamente: o arquivamento protege o histórico, mas o snapshot ativo seria substituído pela fórmula nova.
+- Total agora: **12 commits** locais à frente do remoto aguardando push (@devops, com aprovação).
