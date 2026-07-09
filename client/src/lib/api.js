@@ -95,8 +95,8 @@ export const adminApi = {
   resetUserPassword: (id, new_password) => api.put(`/admin/users/${id}/reset-password`, { new_password }),
   getPasswordResetRequests: () => api.get('/admin/password-reset-requests'),
   getPendingValidations: (month) => api.get('/admin/validations', { params: month ? { month } : {} }),
-  validateSubmission: (id, approved) =>
-    api.put(`/admin/validations/${id}`, { approved }),
+  validateSubmission: (id, approved, rejection_reason) =>
+    api.put(`/admin/validations/${id}`, { approved, rejection_reason }),
   approveAllPending: (month) =>
     api.post('/admin/validations/approve-all', { month }),
   calculateRanking: (month) =>

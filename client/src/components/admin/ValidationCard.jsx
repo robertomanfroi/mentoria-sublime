@@ -11,11 +11,13 @@ import Badge from '../ui/Badge'
 export default function ValidationCard({ submission, onValidated }) {
   const [loading, setLoading] = useState(null) // 'approve' | 'reject'
   const [done, setDone] = useState(false)
+  const [rejecting, setRejecting] = useState(false)
+  const [reason, setReason] = useState('')
 
-  async function handle(status) {
+  async function handle(status, rejectionReason) {
     setLoading(status)
     try {
-      await adminApi.validateSubmission(submission.id, status === 'approved')
+      await adminApi.validateSubmission(submission.id, status === 'approved', rejectionReason || undefined)
       setDone(true)
       onValidated?.(submission.id, status)
     } catch (err) {
@@ -114,30 +116,63 @@ export default function ValidationCard({ submission, onValidated }) {
       )}
 
       {/* Ações */}
-      <div className="flex gap-3">
-        <Button
-          variant="primary"
-          size="sm"
-          loading={loading === 'approved'}
-          disabled={!!loading}
-          onClick={() => handle('approved')}
-          className="flex-1 gap-1.5"
-        >
-          <CheckCircle size={15} />
-          Aprovar
-        </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          loading={loading === 'rejected'}
-          disabled={!!loading}
-          onClick={() => handle('rejected')}
-          className="flex-1 gap-1.5"
-        >
-          <XCircle size={15} />
-          Rejeitar
-        </Button>
-      </div>
+      {rejecting ? (
+        <div className="space-y-3">
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Motivo da rejeição (visível para a mentorada)..."
+            rows={2}
+            className="w-full text-sm font-body p-3 rounded-xl border border-dark/15 focus:outline-none focus:border-gold resize-none"
+          />
+          <div className="flex gap-3">
+            <Button
+              variant="danger"
+              size="sm"
+              loading={loading === 'rejected'}
+              disabled={!!loading}
+              onClick={() => handle('rejected', reason.trim())}
+              className="flex-1 gap-1.5"
+            >
+              <XCircle size={15} />
+              Confirmar rejeição
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!!loading}
+              onClick={() => { setRejecting(false); setReason('') }}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-3">
+          <Button
+            variant="primary"
+            size="sm"
+            loading={loading === 'approved'}
+            disabled={!!loading}
+            onClick={() => handle('approved')}
+            className="flex-1 gap-1.5"
+          >
+            <CheckCircle size={15} />
+            Aprovar
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            disabled={!!loading}
+            onClick={() => setRejecting(true)}
+            className="flex-1 gap-1.5"
+          >
+            <XCircle size={15} />
+            Rejeitar
+          </Button>
+        </div>
+      )}
     </Card>
   )
 }

@@ -263,24 +263,33 @@ async function getMonthlyHistory() {
   return { months, data };
 }
 
-async function approveAllPending(month) {
+async function approveAllPending(month, adminId = null) {
   if (!/^\d{4}-\d{2}$/.test(month)) {
     const err = new Error('Formato de mês inválido.'); err.status = 400; throw err;
   }
   const result = await prepare(
-    'UPDATE monthly_data SET validated_by_admin = 1, updated_at = CURRENT_TIMESTAMP WHERE month = ? AND validated_by_admin = 0'
-  ).run(month);
-  console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'approve_all_monthly', userId: null, details: { month, approved: result.changes } }));
+    'UPDATE monthly_data SET validated_by_admin = 1, validated_at = CURRENT_TIMESTAMP, validated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE month = ? AND validated_by_admin = 0'
+  ).run(adminId, month);
+  console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'approve_all_monthly', userId: adminId, details: { month, approved: result.changes } }));
   return { approved: result.changes };
 }
 
-async function setValidation(id, approved) {
+async function setValidation(id, approved, { reason = null, adminId = null } = {}) {
   const existing = await prepare('SELECT id, month FROM monthly_data WHERE id = ?').get(id);
   if (!existing) {
     const err = new Error('Registro não encontrado.'); err.status = 404; throw err;
   }
-  const validated = approved ? 1 : 0;
-  await prepare('UPDATE monthly_data SET validated_by_admin = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(validated, id);
+  // 0 = pendente | 1 = aprovado | 2 = rejeitado
+  const validated = approved ? 1 : 2;
+  await prepare(`
+    UPDATE monthly_data SET
+      validated_by_admin = ?,
+      rejection_reason = ?,
+      validated_at = CURRENT_TIMESTAMP,
+      validated_by = ?,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(validated, approved ? null : (reason || null), adminId, id);
 
   // Não recalcula ranking aqui para evitar N recalculações em aprovações individuais.
   // O ranking deve ser recalculado manualmente via POST /admin/ranking/calculate

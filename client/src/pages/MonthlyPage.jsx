@@ -193,6 +193,24 @@ export default function MonthlyPage() {
         {statusInfo && <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>}
       </div>
 
+      {/* ── Motivo da rejeição ───────────────────────────────────── */}
+      {status === 'rejected' && submission?.rejection_reason && (
+        <div
+          className="p-4 rounded-xl animate-fade-in-up"
+          style={{ background: 'rgba(192,57,43,0.06)', border: '1px solid rgba(192,57,43,0.25)' }}
+        >
+          <p className="text-sm font-body font-semibold" style={{ color: '#c0392b' }}>
+            Envio rejeitado pela mentora
+          </p>
+          <p className="text-sm font-body mt-1" style={{ color: DARK }}>
+            {submission.rejection_reason}
+          </p>
+          <p className="text-xs font-body mt-2" style={{ color: `${DARK}80` }}>
+            Corrija os dados abaixo e envie novamente para nova análise.
+          </p>
+        </div>
+      )}
+
       {loading ? (
         <LoadingSpinner centered />
       ) : (

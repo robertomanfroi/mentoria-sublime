@@ -57,11 +57,14 @@ async function listValidations(req, res, next) {
 
 async function setValidation(req, res, next) {
   try {
-    const { approved } = req.body;
+    const { approved, rejection_reason } = req.body;
     if (approved === undefined) {
       return res.status(400).json({ error: 'Campo approved (boolean) é obrigatório.' });
     }
-    res.json(await adminService.setValidation(req.params.id, approved));
+    res.json(await adminService.setValidation(req.params.id, approved, {
+      reason: rejection_reason,
+      adminId: req.user?.id ?? null,
+    }));
   } catch (err) { next(err); }
 }
 
@@ -69,7 +72,7 @@ async function approveAllPending(req, res, next) {
   try {
     const month = req.body.month || req.query.month;
     if (!month) return res.status(400).json({ error: 'Parâmetro month é obrigatório.' });
-    const result = await adminService.approveAllPending(month);
+    const result = await adminService.approveAllPending(month, req.user?.id ?? null);
     let rankingResult = null;
     let rankingError = null;
     try {

@@ -11,7 +11,7 @@ function validateMonth(month) {
 async function getHistory(userId) {
   return prepare(
     `SELECT id, user_id, month, followers_count, followers_previous,
-       instagram_proof_image, validated_by_admin, created_at, updated_at
+       instagram_proof_image, validated_by_admin, rejection_reason, created_at, updated_at
      FROM monthly_data WHERE user_id = ? ORDER BY month DESC`
   ).all(userId);
 }
@@ -21,7 +21,7 @@ async function getByMonth(userId, month) {
   const row = await prepare(
     `SELECT id, user_id, month, followers_count, followers_previous,
        revenue, revenue_previous,
-       instagram_proof_image, validated_by_admin, created_at, updated_at
+       instagram_proof_image, validated_by_admin, rejection_reason, created_at, updated_at
      FROM monthly_data WHERE user_id = ? AND month = ?`
   ).get(userId, month);
   if (!row) {
@@ -46,6 +46,7 @@ async function upsertMonth(userId, month, data) {
         revenue = COALESCE(?, revenue),
         revenue_previous = COALESCE(?, revenue_previous),
         validated_by_admin = 0,
+        rejection_reason = NULL,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(
@@ -72,12 +73,12 @@ async function updateProof(userId, month, filename) {
     await prepare('INSERT INTO monthly_data (user_id, month) VALUES (?, ?)').run(userId, month);
   }
   await prepare(
-    'UPDATE monthly_data SET instagram_proof_image = ?, validated_by_admin = 0, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND month = ?'
+    'UPDATE monthly_data SET instagram_proof_image = ?, validated_by_admin = 0, rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND month = ?'
   ).run(filename, userId, month);
 
   return prepare(
     `SELECT id, user_id, month, followers_count, followers_previous,
-       instagram_proof_image, validated_by_admin, created_at, updated_at
+       instagram_proof_image, validated_by_admin, rejection_reason, created_at, updated_at
      FROM monthly_data WHERE user_id = ? AND month = ?`
   ).get(userId, month);
 }
