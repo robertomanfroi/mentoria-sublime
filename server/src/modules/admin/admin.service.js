@@ -117,7 +117,7 @@ async function deleteUser(id) {
 }
 
 async function listChecklistItems() {
-  return prepare('SELECT * FROM checklist_items ORDER BY sort_order ASC').all();
+  return prepare('SELECT * FROM checklist_items WHERE active = 1 ORDER BY sort_order ASC').all();
 }
 
 async function addChecklistItem({ stage, description, sort_order }) {
