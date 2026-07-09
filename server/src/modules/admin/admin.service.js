@@ -270,6 +270,12 @@ async function approveAllPending(month, adminId = null) {
   if (!/^\d{4}-\d{2}$/.test(month)) {
     const err = new Error('Formato de mês inválido.'); err.status = 400; throw err;
   }
+  // Trilha de auditoria em massa antes do UPDATE
+  await prepare(`
+    INSERT INTO validation_audit (monthly_data_id, user_id, month, previous_status, new_status, previous_reason, new_reason, admin_id)
+    SELECT id, user_id, month, validated_by_admin, 1, rejection_reason, NULL, ?
+    FROM monthly_data WHERE month = ? AND validated_by_admin = 0
+  `).run(adminId, month);
   const result = await prepare(
     'UPDATE monthly_data SET validated_by_admin = 1, validated_at = CURRENT_TIMESTAMP, validated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE month = ? AND validated_by_admin = 0'
   ).run(adminId, month);
@@ -278,12 +284,22 @@ async function approveAllPending(month, adminId = null) {
 }
 
 async function setValidation(id, approved, { reason = null, adminId = null } = {}) {
-  const existing = await prepare('SELECT id, month FROM monthly_data WHERE id = ?').get(id);
+  const existing = await prepare(
+    'SELECT id, user_id, month, validated_by_admin, rejection_reason FROM monthly_data WHERE id = ?'
+  ).get(id);
   if (!existing) {
     const err = new Error('Registro não encontrado.'); err.status = 404; throw err;
   }
   // 0 = pendente | 1 = aprovado | 2 = rejeitado
   const validated = approved ? 1 : 2;
+  const newReason = approved ? null : (reason || null);
+
+  // Trilha de auditoria: preserva estado anterior antes de sobrescrever
+  await prepare(`
+    INSERT INTO validation_audit (monthly_data_id, user_id, month, previous_status, new_status, previous_reason, new_reason, admin_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(existing.id, existing.user_id, existing.month, existing.validated_by_admin, validated, existing.rejection_reason ?? null, newReason, adminId);
+
   await prepare(`
     UPDATE monthly_data SET
       validated_by_admin = ?,
@@ -292,7 +308,7 @@ async function setValidation(id, approved, { reason = null, adminId = null } = {
       validated_by = ?,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
-  `).run(validated, approved ? null : (reason || null), adminId, id);
+  `).run(validated, newReason, adminId, id);
 
   // Não recalcula ranking aqui para evitar N recalculações em aprovações individuais.
   // O ranking deve ser recalculado manualmente via POST /admin/ranking/calculate
