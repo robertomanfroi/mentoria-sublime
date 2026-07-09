@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const { prepare, executeTransaction } = require('../../config/database');
 const { calculateMonthRanking } = require('../../utils/rankingCalculator');
 const { buildChecklistProgressMap, invalidateRankingCache } = require('../ranking/ranking.service');
+const { getCurrentMonth } = require('../../utils/formatters');
 
 // Lock simples para evitar cálculos de ranking simultâneos para o mesmo mês
 const rankingLocks = new Map();
@@ -9,7 +10,7 @@ const rankingLocks = new Map();
 async function listUsers({ page = 1, limit = 100 } = {}) {
   const totalRow = await prepare('SELECT COUNT(*) as cnt FROM checklist_items WHERE active = 1').get();
   const totalChecklist = totalRow.cnt;
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = getCurrentMonth();
   const offset = (Math.max(1, page) - 1) * limit;
 
   const totalUsersRow = await prepare("SELECT COUNT(*) as cnt FROM users WHERE role = 'mentorada' AND deleted_at IS NULL").get();

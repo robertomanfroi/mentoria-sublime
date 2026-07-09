@@ -1,4 +1,5 @@
 const adminService = require('./admin.service');
+const { getCurrentMonth } = require('../../utils/formatters');
 
 // ─── USERS ───────────────────────────────────────────────────────────────────
 
@@ -110,7 +111,7 @@ async function updatePrize(req, res, next) {
 
 async function getMonthDiagnostic(req, res, next) {
   try {
-    const month = req.query.month || new Date().toISOString().slice(0, 7);
+    const month = req.query.month || getCurrentMonth();
     res.json(await adminService.getMonthDiagnostic(month));
   } catch (err) { next(err); }
 }

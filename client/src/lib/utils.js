@@ -46,11 +46,15 @@ export function getMonthLabel(yearMonth) {
 }
 
 /**
- * Retorna o mês atual no formato "YYYY-MM" em UTC,
- * alinhado com o timezone do servidor.
+ * Retorna o mês atual no formato "YYYY-MM" no fuso America/Sao_Paulo,
+ * evitando virada de mês antecipada por UTC.
  */
 export function getCurrentMonth() {
-  return new Date().toISOString().slice(0, 7)
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+  }).format(new Date()) // "YYYY-MM"
 }
 
 /**

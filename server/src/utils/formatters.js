@@ -8,4 +8,16 @@ function sanitizeMonthlyData(row) {
   return safe;
 }
 
-module.exports = { sanitizeMonthlyData };
+/**
+ * Mês atual no formato "YYYY-MM" no fuso America/Sao_Paulo,
+ * evitando virada de mês antecipada por UTC.
+ */
+function getCurrentMonth() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+  }).format(new Date()); // "YYYY-MM"
+}
+
+module.exports = { sanitizeMonthlyData, getCurrentMonth };
