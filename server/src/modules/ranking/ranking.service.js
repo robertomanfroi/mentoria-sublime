@@ -146,7 +146,12 @@ async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
   try {
     const { executeTransaction } = require('../../config/database');
     const insertSql = `INSERT OR REPLACE INTO ranking_snapshots (user_id, month, checklist_score, revenue_score, followers_score, total_score, position) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    // Arquiva snapshot existente antes de substituir (defensivo — este caminho só roda sem snapshot prévio)
+    const archiveSql = `INSERT INTO ranking_snapshots_history (user_id, month, checklist_score, revenue_score, followers_score, total_score, position)
+      SELECT user_id, month, checklist_score, revenue_score, followers_score, total_score, position
+      FROM ranking_snapshots WHERE month = ?`;
     await executeTransaction([
+      { sql: archiveSql, args: [month] },
       { sql: 'DELETE FROM ranking_snapshots WHERE month = ?', args: [month] },
       ...scores.map(s => ({ sql: insertSql, args: [s.user_id, month, s.checklist_score, s.revenue_score, s.followers_score, s.total_score, s.position] })),
     ]);

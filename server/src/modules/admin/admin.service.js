@@ -348,7 +348,12 @@ async function calculateAndSaveRanking(month) {
   const scores = calculateMonthRanking(allMonthlyData, checklistProgress, weights);
 
   const insertSql = `INSERT INTO ranking_snapshots (user_id, month, checklist_score, revenue_score, followers_score, total_score, position) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+  // Arquiva o snapshot atual antes de substituí-lo — preserva o histórico de scores da época
+  const archiveSql = `INSERT INTO ranking_snapshots_history (user_id, month, checklist_score, revenue_score, followers_score, total_score, position)
+    SELECT user_id, month, checklist_score, revenue_score, followers_score, total_score, position
+    FROM ranking_snapshots WHERE month = ?`;
   await executeTransaction([
+    { sql: archiveSql, args: [month] },
     { sql: 'DELETE FROM ranking_snapshots WHERE month = ?', args: [month] },
     ...scores.map(s => ({ sql: insertSql, args: [s.user_id, month, s.checklist_score, s.revenue_score, s.followers_score, s.total_score, s.position] })),
   ]);
