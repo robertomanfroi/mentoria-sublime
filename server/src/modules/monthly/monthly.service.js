@@ -27,8 +27,34 @@ async function getByMonth(userId, month) {
   return row || null;
 }
 
+function validateNumbers(data) {
+  const fields = {
+    followers_count: 'Seguidores (atual)',
+    followers_previous: 'Seguidores (mês anterior)',
+    revenue: 'Faturamento (atual)',
+    revenue_previous: 'Faturamento (mês anterior)',
+  };
+  for (const [key, label] of Object.entries(fields)) {
+    const value = data[key];
+    if (value === undefined || value === null) continue;
+    const num = Number(value);
+    if (!Number.isFinite(num) || num < 0) {
+      const err = new Error(`Valor inválido em "${label}". Use um número maior ou igual a zero.`);
+      err.status = 400;
+      throw err;
+    }
+  }
+  const followers = Number(data.followers_count);
+  if (!Number.isFinite(followers) || followers <= 0) {
+    const err = new Error('Informe o número atual de seguidores para enviar os dados do mês.');
+    err.status = 400;
+    throw err;
+  }
+}
+
 async function upsertMonth(userId, month, data) {
   validateMonth(month);
+  validateNumbers(data);
   const { followers_count, followers_previous, revenue, revenue_previous } = data;
 
   const existing = await prepare('SELECT id, validated_by_admin FROM monthly_data WHERE user_id = ? AND month = ?').get(userId, month);

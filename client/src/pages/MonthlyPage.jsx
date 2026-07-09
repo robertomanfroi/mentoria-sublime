@@ -123,15 +123,33 @@ export default function MonthlyPage() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (locked) return
+    setSuccess(false)
+
+    const followersCurrent = Number(followersCurrentStr)
+    if (!followersCurrentStr.trim() || !Number.isFinite(followersCurrent) || followersCurrent <= 0) {
+      setError('Informe o número atual de seguidores antes de enviar.')
+      return
+    }
+    const numFields = [
+      [followersPreviousStr, 'Seguidores (mês anterior)'],
+      [revenueCurrentStr, 'Faturamento (atual)'],
+      [revenuePreviousStr, 'Faturamento (mês anterior)'],
+    ]
+    for (const [str, label] of numFields) {
+      if (str.trim() && (!Number.isFinite(Number(str)) || Number(str) < 0)) {
+        setError(`Valor inválido em "${label}". Use um número maior ou igual a zero.`)
+        return
+      }
+    }
+
     setSaving(true)
     setError('')
-    setSuccess(false)
     try {
       await monthlyApi.submit(selectedMonth, {
-        followers_count:    Number(followersCurrentStr) || 0,
-        followers_previous: Number(followersPreviousStr) || 0,
-        revenue:            Number(revenueCurrentStr) || 0,
-        revenue_previous:   Number(revenuePreviousStr) || 0,
+        followers_count:    followersCurrent,
+        followers_previous: followersPreviousStr.trim() ? Number(followersPreviousStr) : null,
+        revenue:            revenueCurrentStr.trim() ? Number(revenueCurrentStr) : null,
+        revenue_previous:   revenuePreviousStr.trim() ? Number(revenuePreviousStr) : null,
       })
       if (printFile) {
         const fd = new FormData()
