@@ -24,12 +24,7 @@ async function getByMonth(userId, month) {
        instagram_proof_image, validated_by_admin, rejection_reason, created_at, updated_at
      FROM monthly_data WHERE user_id = ? AND month = ?`
   ).get(userId, month);
-  if (!row) {
-    const err = new Error('Dados do mês não encontrados.');
-    err.status = 404;
-    throw err;
-  }
-  return row;
+  return row || null;
 }
 
 async function upsertMonth(userId, month, data) {

@@ -13,7 +13,7 @@ async function getHistory(req, res, next) {
 async function getByMonth(req, res, next) {
   try {
     const row = await monthlyService.getByMonth(req.user.id, req.params.month);
-    res.json(row);
+    res.json(row ?? null);
   } catch (err) {
     next(err);
   }
