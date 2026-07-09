@@ -122,6 +122,7 @@ export default function MonthlyPage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (locked) return
     setSaving(true)
     setError('')
     setSuccess(false)
@@ -151,6 +152,7 @@ export default function MonthlyPage() {
                    : submission?.validated_by_admin === 2 ? 'rejected'
                    : submission ? 'pending' : null
   const statusInfo = statusConfig[status] || null
+  const locked     = status === 'approved'
 
   return (
     <div
@@ -215,6 +217,7 @@ export default function MonthlyPage() {
         <LoadingSpinner centered />
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
+          <fieldset disabled={locked} className="space-y-4 border-0 p-0 m-0 min-w-0">
 
           {/* ── Seguidores ───────────────────────────────────────── */}
           <div className="animate-fade-in-up-delay-1">
@@ -363,7 +366,20 @@ export default function MonthlyPage() {
             </div>
           )}
 
+          </fieldset>
+
           {/* ── Botão submit ─────────────────────────────────────── */}
+          {locked ? (
+            <div
+              className="flex items-center gap-3 p-4 rounded-xl"
+              style={{ background: 'rgba(74,140,80,0.07)', border: '1px solid rgba(74,140,80,0.20)' }}
+            >
+              <CheckCircle size={16} style={{ color: '#3a8040', flexShrink: 0 }} />
+              <p className="text-sm font-body" style={{ color: '#3a8040' }}>
+                Este mês já foi validado pela mentora e não pode mais ser alterado.
+              </p>
+            </div>
+          ) : (
           <button
             type="submit"
             disabled={saving}
@@ -399,6 +415,7 @@ export default function MonthlyPage() {
               submission ? 'Atualizar Dados' : 'Enviar Dados'
             )}
           </button>
+          )}
         </form>
       )}
 

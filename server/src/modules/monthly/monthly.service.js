@@ -36,7 +36,13 @@ async function upsertMonth(userId, month, data) {
   validateMonth(month);
   const { followers_count, followers_previous, revenue, revenue_previous } = data;
 
-  const existing = await prepare('SELECT id FROM monthly_data WHERE user_id = ? AND month = ?').get(userId, month);
+  const existing = await prepare('SELECT id, validated_by_admin FROM monthly_data WHERE user_id = ? AND month = ?').get(userId, month);
+
+  if (existing && existing.validated_by_admin === 1) {
+    const err = new Error('Este mês já foi validado pela mentora e não pode mais ser alterado. Fale com o suporte se precisar corrigir.');
+    err.status = 409;
+    throw err;
+  }
 
   if (existing) {
     await prepare(`
@@ -68,7 +74,12 @@ async function upsertMonth(userId, month, data) {
 
 async function updateProof(userId, month, filename) {
   validateMonth(month);
-  const existing = await prepare('SELECT id FROM monthly_data WHERE user_id = ? AND month = ?').get(userId, month);
+  const existing = await prepare('SELECT id, validated_by_admin FROM monthly_data WHERE user_id = ? AND month = ?').get(userId, month);
+  if (existing && existing.validated_by_admin === 1) {
+    const err = new Error('Este mês já foi validado pela mentora e não pode mais ser alterado. Fale com o suporte se precisar corrigir.');
+    err.status = 409;
+    throw err;
+  }
   if (!existing) {
     await prepare('INSERT INTO monthly_data (user_id, month) VALUES (?, ?)').run(userId, month);
   }
