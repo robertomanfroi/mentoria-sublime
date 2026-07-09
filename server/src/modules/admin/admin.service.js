@@ -41,10 +41,11 @@ async function listUsers({ page = 1, limit = 100 } = {}) {
   if (userIds.length > 0) {
     const placeholders = userIds.map(() => '?').join(',');
     const completedRows = await prepare(`
-      SELECT user_id, COUNT(*) as cnt
-      FROM checklist_progress
-      WHERE user_id IN (${placeholders}) AND completed = 1
-      GROUP BY user_id
+      SELECT cp.user_id, COUNT(*) as cnt
+      FROM checklist_progress cp
+      JOIN checklist_items ci ON ci.id = cp.checklist_item_id AND ci.active = 1
+      WHERE cp.user_id IN (${placeholders}) AND cp.completed = 1
+      GROUP BY cp.user_id
     `).all(...userIds);
     completedMap = Object.fromEntries(completedRows.map(r => [r.user_id, r.cnt]));
   }
@@ -152,15 +153,9 @@ async function deleteChecklistItem(id) {
   if (!existing) {
     const err = new Error('Item não encontrado.'); err.status = 404; throw err;
   }
-  const progressRow = await prepare(
-    'SELECT COUNT(*) as cnt FROM checklist_progress WHERE checklist_item_id = ? AND completed = 1'
-  ).get(id);
-  if (progressRow.cnt > 0) {
-    const err = new Error('Não é possível remover item com progresso registrado.');
-    err.status = 409;
-    throw err;
-  }
-  await prepare('DELETE FROM checklist_items WHERE id = ?').run(id);
+  // Soft delete: preserva o item e o progresso histórico das alunas.
+  // Item pode ser reativado via updateChecklistItem({ active: 1 }).
+  await prepare('UPDATE checklist_items SET active = 0 WHERE id = ?').run(id);
   return { success: true };
 }
 
@@ -398,8 +393,9 @@ async function exportCSV() {
   if (exportUserIds.length > 0) {
     const ph = exportUserIds.map(() => '?').join(',');
     const completedRows = await prepare(`
-      SELECT user_id, COUNT(*) as cnt FROM checklist_progress
-      WHERE user_id IN (${ph}) AND completed = 1 GROUP BY user_id
+      SELECT cp.user_id, COUNT(*) as cnt FROM checklist_progress cp
+      JOIN checklist_items ci ON ci.id = cp.checklist_item_id AND ci.active = 1
+      WHERE cp.user_id IN (${ph}) AND cp.completed = 1 GROUP BY cp.user_id
     `).all(...exportUserIds);
     exportCompletedMap = Object.fromEntries(completedRows.map(r => [r.user_id, r.cnt]));
 

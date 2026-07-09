@@ -33,10 +33,11 @@ async function buildChecklistProgressMap(userIds) {
   // Uma única query com GROUP BY em vez de N queries individuais
   const placeholders = userIds.map(() => '?').join(',');
   const rows = await prepare(`
-    SELECT user_id, COUNT(*) as completed
-    FROM checklist_progress
-    WHERE user_id IN (${placeholders}) AND completed = 1
-    GROUP BY user_id
+    SELECT cp.user_id, COUNT(*) as completed
+    FROM checklist_progress cp
+    JOIN checklist_items ci ON ci.id = cp.checklist_item_id AND ci.active = 1
+    WHERE cp.user_id IN (${placeholders}) AND cp.completed = 1
+    GROUP BY cp.user_id
   `).all(...userIds);
 
   const completedMap = Object.fromEntries(rows.map(r => [r.user_id, r.completed]));

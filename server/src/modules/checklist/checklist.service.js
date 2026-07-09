@@ -43,9 +43,11 @@ async function toggleItem(userId, itemId) {
 
 async function getProgress(userId) {
   const totalRow = await prepare('SELECT COUNT(*) as cnt FROM checklist_items WHERE active = 1').get();
-  const completedRow = await prepare(
-    'SELECT COUNT(*) as cnt FROM checklist_progress WHERE user_id = ? AND completed = 1'
-  ).get(userId);
+  const completedRow = await prepare(`
+    SELECT COUNT(*) as cnt FROM checklist_progress cp
+    JOIN checklist_items ci ON ci.id = cp.checklist_item_id AND ci.active = 1
+    WHERE cp.user_id = ? AND cp.completed = 1
+  `).get(userId);
 
   const total = totalRow.cnt;
   const completed = completedRow.cnt;
