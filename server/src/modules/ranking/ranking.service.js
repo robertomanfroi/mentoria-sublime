@@ -199,9 +199,17 @@ async function getGeneralRanking() {
            AVG(rs.checklist_score)  AS avg_checklist,
            AVG(rs.revenue_score)    AS avg_revenue,
            AVG(rs.followers_score)  AS avg_followers,
+           COALESCE(fg.followers_gained, 0) AS followers_gained,
            u.name, u.instagram_handle, u.profile_photo
     FROM ranking_snapshots rs
     JOIN users u ON u.id = rs.user_id AND u.role != 'admin'
+    LEFT JOIN (
+      SELECT user_id,
+             SUM(COALESCE(followers_count, 0) - COALESCE(followers_previous, 0)) AS followers_gained
+      FROM monthly_data
+      WHERE validated_by_admin = 1
+      GROUP BY user_id
+    ) fg ON fg.user_id = rs.user_id
     GROUP BY rs.user_id
     ORDER BY avg_score DESC, months_count DESC
   `).all();
@@ -221,6 +229,8 @@ async function getGeneralRanking() {
     avg_checklist: Math.round(r.avg_checklist * 100) / 100,
     avg_revenue: Math.round(r.avg_revenue * 100) / 100,
     avg_followers: Math.round(r.avg_followers * 100) / 100,
+    followers_gained: r.followers_gained || 0,
+    checklist_score: Math.round(r.avg_checklist * 100) / 100, // alias para StarGroup
     total_score: Math.round(r.avg_score * 100) / 100, // alias para compatibilidade com componentes
   }));
 

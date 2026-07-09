@@ -3,8 +3,26 @@
  *
  * @param {Array} allMonthlyData - Array de { user_id, followers_count, followers_previous, revenue, revenue_previous, validated_by_admin }
  * @param {Object} checklistProgressByUser - { [user_id]: { completed: Number, total: Number } }
- * @returns {Array} Array de { user_id, checklist_score, revenue_score, followers_score, total_score }
+ * @param {Object} weights - { checklist, revenue, followers } (opcional)
+ * @returns {Array} Array de { user_id, checklist_score, revenue_score, followers_score, total_score, position }
  */
+
+// Faixas de faturamento absoluto (R$) → score 0-100
+const REVENUE_TIERS = [
+  { min: 20000, score: 100 },
+  { min: 10000, score: 80 },
+  { min: 5000, score: 60 },
+  { min: 2000, score: 40 },
+  { min: 1, score: 20 },
+];
+
+function getRevenueTierScore(revenue) {
+  for (const tier of REVENUE_TIERS) {
+    if (revenue >= tier.min) return tier.score;
+  }
+  return 0;
+}
+
 function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights) {
   const w = {
     checklist: weights?.checklist ?? 0.34,
@@ -25,36 +43,34 @@ function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights)
   }
 
   // --- Revenue Score ---
-  // ((rev - rev_prev) / rev_prev) * 100, cap 100, negativo = 0, rev_prev = 0 → score = 0
+  // Híbrido: 50% crescimento percentual (cap 100, negativo = 0) + 50% faixa de valor absoluto.
+  // Sem mês anterior (rev_prev = 0): usa apenas a faixa de valor absoluto (100% do peso).
   function getRevenueScore(data) {
     const rev = data.revenue || 0;
     const revPrev = data.revenue_previous || 0;
-    if (revPrev === 0) return 0;
+    const tierScore = getRevenueTierScore(rev);
+
+    if (revPrev === 0) return tierScore;
+
     const growth = ((rev - revPrev) / revPrev) * 100;
-    if (growth < 0) return 0;
-    return Math.min(growth, 100);
+    const growthScore = growth < 0 ? 0 : Math.min(growth, 100);
+    return growthScore * 0.5 + tierScore * 0.5;
   }
 
   // --- Followers Score ---
-  // crescimento absoluto por usuário, normalizado pelo maior crescimento
-  function getFollowersGrowth(data) {
+  // Crescimento percentual sobre a própria base, teto 100 (+10% = 100 pontos).
+  // Sem base anterior (prev = 0): score 0 no critério (sem referência de crescimento).
+  function getFollowersScore(data) {
     const curr = data.followers_count || 0;
     const prev = data.followers_previous || 0;
-    const growth = curr - prev;
-    return growth < 0 ? 0 : growth;
-  }
-
-  const growths = validated.map(d => getFollowersGrowth(d));
-  const maxGrowth = Math.max(...growths);
-
-  function getFollowersScore(data) {
-    if (maxGrowth === 0) return 0;
-    const growth = getFollowersGrowth(data);
-    return (growth / maxGrowth) * 100;
+    if (prev === 0) return 0;
+    const growthPct = ((curr - prev) / prev) * 100;
+    if (growthPct <= 0) return 0;
+    // +10% de crescimento = 100 pontos (escala 10x)
+    return Math.min(growthPct * 10, 100);
   }
 
   // --- Total Score ---
-  // checklist*0.34 + faturamento*0.33 + seguidores*0.33
   const results = validated.map(data => {
     const checklistScore = getChecklistScore(data.user_id);
     const revenueScore = getRevenueScore(data);
@@ -92,4 +108,4 @@ function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights)
   return results;
 }
 
-module.exports = { calculateMonthRanking };
+module.exports = { calculateMonthRanking, getRevenueTierScore };
