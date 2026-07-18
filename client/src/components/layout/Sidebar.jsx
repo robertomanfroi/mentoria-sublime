@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useAuth } from '../../hooks/useAuth'
+import { adminApi } from '../../lib/api'
 import Avatar from '../ui/Avatar'
 
 const navLinks = [
@@ -37,7 +38,7 @@ const adminLinks = [
   { to: '/admin/export',      icon: Download,    label: 'Exportar'       },
 ]
 
-function NavItem({ to, icon: Icon, label, onClick }) {
+function NavItem({ to, icon: Icon, label, onClick, badge }) {
   return (
     <NavLink
       to={to}
@@ -68,6 +69,14 @@ function NavItem({ to, icon: Icon, label, onClick }) {
           <span className={cn('font-body tracking-wide', isActive && 'font-medium')}>
             {label}
           </span>
+          {badge > 0 && (
+            <span
+              className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-body font-semibold flex items-center justify-center"
+              style={{ background: '#C7AA89', color: '#3D281C' }}
+            >
+              {badge}
+            </span>
+          )}
         </>
       )}
     </NavLink>
@@ -77,6 +86,14 @@ function NavItem({ to, icon: Icon, label, onClick }) {
 export default function Sidebar() {
   const { user, isAdmin, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [pendingResets, setPendingResets] = useState(0)
+
+  useEffect(() => {
+    if (!isAdmin) return
+    adminApi.getPasswordResetRequests()
+      .then(res => setPendingResets((res.data || []).length))
+      .catch(() => {})
+  }, [isAdmin])
 
   const sidebarContent = (
     <div className="flex flex-col h-full" style={{ background: '#3D281C' }}>
@@ -138,7 +155,12 @@ export default function Sidebar() {
               </div>
             </div>
             {adminLinks.map((link) => (
-              <NavItem key={link.to} {...link} onClick={() => setMobileOpen(false)} />
+              <NavItem
+                key={link.to}
+                {...link}
+                badge={link.to === '/admin/mentoradas' ? pendingResets : 0}
+                onClick={() => setMobileOpen(false)}
+              />
             ))}
           </>
         )}

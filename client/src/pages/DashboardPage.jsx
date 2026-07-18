@@ -216,24 +216,33 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Histórico de seguidores ────────────────────────────── */}
-          {chartData.length > 0 && (
-            <div
-              className="rounded-2xl p-5 animate-fade-in-up-delay-3"
-              style={{
-                background: '#ffffff',
-                border: `1px solid rgba(216,209,193,0.6)`,
-                boxShadow: '0 2px 12px rgba(41,41,41,0.05)',
-              }}
+          <div
+            className="rounded-2xl p-5 animate-fade-in-up-delay-3"
+            style={{
+              background: '#ffffff',
+              border: `1px solid rgba(216,209,193,0.6)`,
+              boxShadow: '0 2px 12px rgba(41,41,41,0.05)',
+            }}
+          >
+            <h3
+              className="font-display font-semibold mb-4"
+              style={{ fontFamily: 'Bride, Georgia, serif', fontSize: '16px', color: BROWN }}
             >
-              <h3
-                className="font-display font-semibold mb-4"
-                style={{ fontFamily: 'Bride, Georgia, serif', fontSize: '16px', color: BROWN }}
-              >
-                Evolução de Seguidores
-              </h3>
+              Evolução de Seguidores
+            </h3>
+            {chartData.some(d => d.followers > 0) ? (
               <MiniChart data={chartData} />
-            </div>
-          )}
+            ) : (
+              <div className="py-6 text-center">
+                <p className="text-sm font-body italic" style={{ color: `${DARK}40` }}>
+                  Ainda não há dados de seguidores registrados.
+                </p>
+                <p className="text-xs font-body mt-1" style={{ color: `${DARK}30` }}>
+                  Atualize seus dados do mês para acompanhar sua evolução aqui.
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* ── CTAs ───────────────────────────────────────────────── */}
           <div className="flex flex-col sm:flex-row gap-3 animate-fade-in-up-delay-4">

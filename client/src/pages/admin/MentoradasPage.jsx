@@ -194,7 +194,7 @@ export default function MentoradasPage() {
             {totalMentoradas} mentoradas cadastradas
             {passwordResetRequests.length > 0 && (
               <span className="ml-2 font-semibold" style={{ color: '#c0392b' }}>
-                · {passwordResetRequests.length} solicitação{passwordResetRequests.length > 1 ? 'ões' : ''} de senha pendente{passwordResetRequests.length > 1 ? 's' : ''}
+                · {passwordResetRequests.length} solicitaç{passwordResetRequests.length > 1 ? 'ões' : 'ão'} de senha pendente{passwordResetRequests.length > 1 ? 's' : ''}
               </span>
             )}
           </p>

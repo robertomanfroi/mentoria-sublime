@@ -161,7 +161,7 @@ export default function LoginPage() {
               className="text-3xl font-semibold text-dark mb-2 leading-tight"
               style={{ fontFamily: 'Bride, Georgia, serif' }}
             >
-              Bem-vinda<br />de volta
+              Bem-vinda{' '}<br />de volta
             </h1>
             <p className="text-sm text-dark/50 font-body">
               Entre na sua conta para continuar.

@@ -23,6 +23,28 @@ import ChecklistAdminPage from '../pages/admin/ChecklistAdminPage'
 import PrizesAdminPage from '../pages/admin/PrizesAdminPage'
 import ExportPage from '../pages/admin/ExportPage'
 
+function NotFoundPage() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-cream px-6 text-center">
+      <h1
+        className="text-5xl font-semibold text-dark mb-3"
+        style={{ fontFamily: 'Bride, Georgia, serif' }}
+      >
+        404
+      </h1>
+      <p className="text-sm text-dark/60 font-body mb-6">
+        Ops! A página que você procura não existe ou foi movida.
+      </p>
+      <a
+        href="/dashboard"
+        className="px-5 py-2.5 rounded-full bg-dark text-white text-sm font-body hover:opacity-90 transition-opacity"
+      >
+        Voltar ao início
+      </a>
+    </div>
+  )
+}
+
 const router = createBrowserRouter([
   // Redirect raiz
   {
@@ -48,6 +70,7 @@ const router = createBrowserRouter([
         <AppLayout />
       </ProtectedRoute>
     ),
+    errorElement: <NotFoundPage />,
     children: [
       {
         path: 'dashboard',
@@ -124,6 +147,12 @@ const router = createBrowserRouter([
         ),
       },
     ],
+  },
+
+  // Catch-all 404
+  {
+    path: '*',
+    element: <NotFoundPage />,
   },
 ])
 

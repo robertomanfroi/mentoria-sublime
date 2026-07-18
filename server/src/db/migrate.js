@@ -94,9 +94,9 @@ async function seedSampleMentoradas() {
     return;
   }
   const samples = [
-    { name: 'Ana Silva', email: 'ana@exemplo.com', instagram_handle: '@anasilva' },
-    { name: 'Carla Souza', email: 'carla@exemplo.com', instagram_handle: '@carlasouza' },
-    { name: 'Julia Mendes', email: 'julia@exemplo.com', instagram_handle: '@juliamendes' },
+    { name: 'Ana Silva', email: 'ana@exemplo.com', instagram_handle: 'anasilva' },
+    { name: 'Carla Souza', email: 'carla@exemplo.com', instagram_handle: 'carlasouza' },
+    { name: 'Julia Mendes', email: 'julia@exemplo.com', instagram_handle: 'juliamendes' },
   ];
 
   const samplePassword = process.env.SAMPLE_USER_PASSWORD || 'senha123';
@@ -111,8 +111,14 @@ async function seedSampleMentoradas() {
   console.log('[seed] Mentoradas de exemplo inseridas (ou já existentes).');
 }
 
+async function normalizeInstagramHandles() {
+  // Remove "@" inicial de handles existentes (normalização, sem perda de dados)
+  await prepare("UPDATE users SET instagram_handle = SUBSTR(instagram_handle, 2) WHERE instagram_handle LIKE '@%'").run();
+}
+
 async function migrate() {
   await runMigrations();
+  await normalizeInstagramHandles();
   await seedChecklistItems();
   await seedPrizes();
   await seedAdminUser();

@@ -246,7 +246,7 @@ export default function PrizesPage() {
   const fn = useCallback(() => prizesApi.getPrizes(), [])
   const { data, loading } = useApi(fn)
 
-  const prizes = data?.prizes || []
+  const prizes = Array.isArray(data) ? data : (data?.prizes || [])
 
   return (
     <div

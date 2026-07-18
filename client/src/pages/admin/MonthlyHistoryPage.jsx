@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { ExternalLink, CheckCircle2, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { ExternalLink, CheckCircle2, XCircle, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { adminApi } from '../../lib/api'
 import { getMonthLabel, formatNumber, formatCurrency } from '../../lib/utils'
@@ -62,6 +62,10 @@ function MonthCell({ cell }) {
           {cell.validated ? (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
               <CheckCircle2 size={12} strokeWidth={2} /> Validado
+            </span>
+          ) : cell.validation_status === 2 ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-500">
+              <XCircle size={12} strokeWidth={2} /> Rejeitado
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600">

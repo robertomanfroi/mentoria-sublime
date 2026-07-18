@@ -168,13 +168,13 @@ async function listPendingValidations(month, { page = 1, limit = 50 } = {}) {
     SELECT md.*, u.name, u.email, u.instagram_handle,
            u.profile_photo
     FROM monthly_data md
-    JOIN users u ON u.id = md.user_id
+    JOIN users u ON u.id = md.user_id AND u.role != 'admin'
     WHERE md.validated_by_admin = 0 ${monthFilter}
     ORDER BY md.month DESC, md.created_at DESC
     LIMIT ? OFFSET ?
   `).all(...params, limit, offset);
   const totalRow = await prepare(
-    `SELECT COUNT(*) as cnt FROM monthly_data md WHERE md.validated_by_admin = 0 ${monthFilter}`
+    `SELECT COUNT(*) as cnt FROM monthly_data md JOIN users u ON u.id = md.user_id AND u.role != 'admin' WHERE md.validated_by_admin = 0 ${monthFilter}`
   ).get(...params);
   return { data: rows, total: totalRow.cnt, page, limit };
 }
@@ -244,6 +244,7 @@ async function getMonthlyHistory() {
       revenue_previous: r.revenue_previous ?? null,
       revenue_growth_pct: revenueGrowthPct,
       validated: r.validated_by_admin === 1,
+      validation_status: r.validated_by_admin, // 0 = pendente | 1 = aprovado | 2 = rejeitado
       proof_url: r.instagram_proof_image ? `/uploads/proofs/${r.instagram_proof_image}` : null,
       created_at: r.created_at,
     };
