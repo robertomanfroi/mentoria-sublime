@@ -97,6 +97,12 @@ async function approveAllPending(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function unapproveValidation(req, res, next) {
+  try {
+    res.json(await adminService.unapproveValidation(req.params.id, req.user?.id ?? null));
+  } catch (err) { next(err); }
+}
+
 // ─── PRIZES ───────────────────────────────────────────────────────────────────
 
 async function listPrizes(req, res, next) {
@@ -167,7 +173,7 @@ async function listPasswordResetRequests(req, res, next) {
 module.exports = {
   listUsers, updateUser, deleteUser,
   listChecklistItems, addChecklistItem, updateChecklistItem, deleteChecklistItem,
-  listValidations, setValidation, approveAllPending,
+  listValidations, setValidation, approveAllPending, unapproveValidation,
   listPrizes, updatePrize,
   calculateRanking,
   exportCSV,

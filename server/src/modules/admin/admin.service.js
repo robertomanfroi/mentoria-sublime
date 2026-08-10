@@ -218,7 +218,7 @@ async function getMonthlyHistory() {
 
   // Todos os registros mensais de mentoradas (células da tabela)
   const rows = await prepare(`
-    SELECT md.user_id, md.month, md.followers_count, md.followers_previous,
+    SELECT md.id as monthly_data_id, md.user_id, md.month, md.followers_count, md.followers_previous,
            md.revenue, md.revenue_previous, md.validated_by_admin,
            md.instagram_proof_image, md.created_at
     FROM monthly_data md
@@ -237,6 +237,7 @@ async function getMonthlyHistory() {
       ? Math.round(((r.revenue - r.revenue_previous) / r.revenue_previous) * 1000) / 10
       : null;
     cells[`${r.user_id}|${r.month}`] = {
+      monthly_data_id: r.monthly_data_id,
       followers_current: r.followers_count ?? null,
       followers_previous: r.followers_previous ?? null,
       followers_gained: followersGained,
@@ -310,6 +311,50 @@ async function setValidation(id, approved, { reason = null, adminId = null } = {
   // O ranking deve ser recalculado manualmente via POST /admin/ranking/calculate
   // ou automaticamente após approveAllPending.
 
+  return prepare('SELECT * FROM monthly_data WHERE id = ?').get(id);
+}
+
+async function unapproveValidation(id, adminId = null) {
+  const existing = await prepare(
+    'SELECT id, user_id, month, validated_by_admin, rejection_reason FROM monthly_data WHERE id = ?'
+  ).get(id);
+  if (!existing) {
+    const err = new Error('Registro não encontrado.'); err.status = 404; throw err;
+  }
+  if (existing.validated_by_admin !== 1) {
+    const err = new Error('Somente registros aprovados podem ser desaprovados.'); err.status = 400; throw err;
+  }
+
+  // Trilha de auditoria: aprovado (1) → pendente (0)
+  await prepare(`
+    INSERT INTO validation_audit (monthly_data_id, user_id, month, previous_status, new_status, previous_reason, new_reason, admin_id)
+    VALUES (?, ?, ?, 1, 0, ?, NULL, ?)
+  `).run(existing.id, existing.user_id, existing.month, existing.rejection_reason ?? null, adminId);
+
+  // Volta para pendente — mentorada poderá editar e reenviar
+  await prepare(`
+    UPDATE monthly_data SET
+      validated_by_admin = 0,
+      rejection_reason = NULL,
+      validated_at = NULL,
+      validated_by = NULL,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(id);
+
+  // Remove snapshot de ranking dessa mentorada nesse mês e recalcula
+  await prepare('DELETE FROM ranking_snapshots WHERE user_id = ? AND month = ?').run(existing.user_id, existing.month);
+  invalidateRankingCache(existing.month);
+
+  // Recalcula ranking sem essa mentorada
+  try {
+    await calculateAndSaveRanking(existing.month);
+  } catch (e) {
+    // Se não houver mais dados validados para o mês, ignora erro
+    if (!e.message?.includes('Nenhum dado')) console.error('[unapprove] ranking recalc failed:', e.message);
+  }
+
+  console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'unapprove_validation', userId: adminId, details: { monthly_data_id: id, user_id: existing.user_id, month: existing.month } }));
   return prepare('SELECT * FROM monthly_data WHERE id = ?').get(id);
 }
 
@@ -506,7 +551,7 @@ async function listPasswordResetRequests() {
 module.exports = {
   listUsers, updateUser, deleteUser,
   listChecklistItems, addChecklistItem, updateChecklistItem, deleteChecklistItem,
-  listPendingValidations, setValidation, approveAllPending,
+  listPendingValidations, setValidation, approveAllPending, unapproveValidation,
   listAllPrizes, updatePrize,
   calculateAndSaveRanking,
   exportCSV,

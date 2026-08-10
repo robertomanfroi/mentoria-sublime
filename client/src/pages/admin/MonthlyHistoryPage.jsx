@@ -1,5 +1,5 @@
-import { useCallback } from 'react'
-import { ExternalLink, CheckCircle2, XCircle, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { ExternalLink, CheckCircle2, XCircle, Clock, TrendingUp, TrendingDown, Minus, Undo2 } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { adminApi } from '../../lib/api'
 import { getMonthLabel, formatNumber, formatCurrency } from '../../lib/utils'
@@ -20,7 +20,7 @@ function GrowthBadge({ value, suffix = '' }) {
   )
 }
 
-function MonthCell({ cell }) {
+function MonthCell({ cell, onUnapprove, unapproving }) {
   if (!cell) {
     return (
       <td className="px-3 py-3 text-center align-middle border-l border-beige/60">
@@ -84,6 +84,21 @@ function MonthCell({ cell }) {
             </a>
           )}
         </div>
+
+        {/* Botão Desaprovar — só aparece para registros validados */}
+        {cell.validated && cell.monthly_data_id && (
+          <div className="pt-1">
+            <button
+              onClick={() => onUnapprove(cell.monthly_data_id)}
+              disabled={unapproving}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 hover:text-amber-800 transition-colors disabled:opacity-50"
+              title="Desaprovar — a mentorada poderá preencher novamente"
+            >
+              <Undo2 size={11} strokeWidth={2} />
+              {unapproving ? 'Desaprovando...' : 'Desaprovar'}
+            </button>
+          </div>
+        )}
       </div>
     </td>
   )
@@ -91,7 +106,21 @@ function MonthCell({ cell }) {
 
 export default function MonthlyHistoryPage() {
   const fetchHistory = useCallback(() => adminApi.getMonthlyHistory(), [])
-  const { data, loading, error } = useApi(fetchHistory)
+  const { data, loading, error, refetch } = useApi(fetchHistory)
+  const [unapprovingId, setUnapprovingId] = useState(null)
+
+  async function handleUnapprove(monthlyDataId) {
+    if (!window.confirm('Desaprovar este registro? A mentorada poderá preencher os dados novamente e o ranking será recalculado.')) return
+    setUnapprovingId(monthlyDataId)
+    try {
+      await adminApi.unapproveValidation(monthlyDataId)
+      refetch()
+    } catch (err) {
+      alert('Erro ao desaprovar: ' + (err.response?.data?.error || err.message))
+    } finally {
+      setUnapprovingId(null)
+    }
+  }
 
   if (loading) return <LoadingSpinner centered />
 
@@ -152,7 +181,12 @@ export default function MonthlyHistoryPage() {
                     </div>
                   </td>
                   {months.map((m) => (
-                    <MonthCell key={m} cell={row.months[m]} />
+                    <MonthCell
+                      key={m}
+                      cell={row.months[m]}
+                      onUnapprove={handleUnapprove}
+                      unapproving={unapprovingId === row.months[m]?.monthly_data_id}
+                    />
                   ))}
                 </tr>
               ))}

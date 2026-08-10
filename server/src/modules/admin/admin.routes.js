@@ -32,6 +32,7 @@ router.delete('/checklist/:id', adminController.deleteChecklistItem);
 router.get('/validations', adminController.listValidations);
 router.put('/validations/:id', adminController.setValidation);
 router.post('/validations/approve-all', adminController.approveAllPending);
+router.put('/validations/:id/unapprove', adminController.unapproveValidation);
 
 // Prizes
 router.get('/prizes', adminController.listPrizes);

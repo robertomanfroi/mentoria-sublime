@@ -108,6 +108,7 @@ export const adminApi = {
     }),
   getDiagnostic: (month) => api.get('/admin/diagnostic', { params: { month } }),
   getMonthlyHistory: () => api.get('/admin/monthly-history'),
+  unapproveValidation: (id) => api.put(`/admin/validations/${id}/unapprove`),
 }
 
 export default api
