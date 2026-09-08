@@ -6,6 +6,7 @@ import AppLayout from '../components/layout/AppLayout'
 // Auth pages
 import LoginPage from '../pages/auth/LoginPage'
 import RegisterPage from '../pages/auth/RegisterPage'
+import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
 
 // App pages
 import DashboardPage from '../pages/DashboardPage'
@@ -60,6 +61,10 @@ const router = createBrowserRouter([
   {
     path: '/register',
     element: <RegisterPage />,
+  },
+  {
+    path: '/redefinir-senha',
+    element: <ResetPasswordPage />,
   },
 
   // App routes (com layout protegido)

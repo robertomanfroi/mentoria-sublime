@@ -7,7 +7,7 @@ import Avatar from '../../components/ui/Avatar'
 import Badge from '../../components/ui/Badge'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import Button from '../../components/ui/Button'
-import { Eye, EyeOff, X, KeyRound } from 'lucide-react'
+import { Eye, EyeOff, X, KeyRound, Mail } from 'lucide-react'
 
 export default function MentoradasPage() {
   const [deleting, setDeleting] = useState(null)   // row sendo deletada
@@ -23,6 +23,10 @@ export default function MentoradasPage() {
   const [resetLoading, setResetLoading] = useState(false)
   const [resetError,   setResetError]   = useState('')
   const [resetSuccess, setResetSuccess] = useState('')
+
+  // Reenvio de link de redefinição
+  const [resendingId, setResendingId] = useState(null)
+  const [resendFeedback, setResendFeedback] = useState(null) // { type: 'success'|'error', message }
 
   const fn = useCallback(() => adminApi.getMentoradas(), [])
   const { data, loading, refetch } = useApi(fn)
@@ -70,6 +74,23 @@ export default function MentoradasPage() {
       setResetError(err?.response?.data?.error || err?.response?.data?.message || 'Erro ao redefinir senha.')
     } finally {
       setResetLoading(false)
+    }
+  }
+
+  async function handleResendResetLink(row) {
+    setResendingId(row.id)
+    setResendFeedback(null)
+    try {
+      const res = await adminApi.resendResetLink(row.id)
+      setResendFeedback({ type: 'success', message: res.data?.message || `Link reenviado para ${row.email}.` })
+    } catch (err) {
+      setResendFeedback({
+        type: 'error',
+        message: err?.response?.data?.error || err?.response?.data?.message || 'Erro ao reenviar link de redefinição.',
+      })
+    } finally {
+      setResendingId(null)
+      setTimeout(() => setResendFeedback(null), 5000)
     }
   }
 
@@ -201,22 +222,45 @@ export default function MentoradasPage() {
         </div>
       </div>
 
+      {resendFeedback && (
+        <div
+          className="mb-3 px-4 py-2.5 rounded-xl text-sm font-body"
+          style={resendFeedback.type === 'success'
+            ? { background: 'rgba(46,125,50,0.08)', border: '1px solid rgba(46,125,50,0.2)', color: '#2e7d32' }
+            : { background: 'rgba(192,57,43,0.07)', border: '1px solid rgba(192,57,43,0.2)', color: '#c0392b' }}
+        >
+          {resendFeedback.message}
+        </div>
+      )}
+
       <DataTable
         columns={columns}
         data={mentoradas}
         onDelete={handleDelete}
         actions={(row) => (
-          <button
-            type="button"
-            title="Definir nova senha"
-            onClick={() => openResetModal(row)}
-            className="p-1.5 rounded-lg transition-colors"
-            style={hasPendingReset(row.id)
-              ? { color: '#c0392b', background: 'rgba(192,57,43,0.07)' }
-              : { color: 'rgba(41,41,41,0.4)' }}
-          >
-            <KeyRound size={14} />
-          </button>
+          <>
+            <button
+              type="button"
+              title="Reenviar link de redefinição por e-mail"
+              onClick={() => handleResendResetLink(row)}
+              disabled={resendingId === row.id}
+              className="p-1.5 rounded-lg transition-colors disabled:opacity-50"
+              style={{ color: 'rgba(41,41,41,0.4)' }}
+            >
+              <Mail size={14} />
+            </button>
+            <button
+              type="button"
+              title="Definir nova senha manualmente"
+              onClick={() => openResetModal(row)}
+              className="p-1.5 rounded-lg transition-colors"
+              style={hasPendingReset(row.id)
+                ? { color: '#c0392b', background: 'rgba(192,57,43,0.07)' }
+                : { color: 'rgba(41,41,41,0.4)' }}
+            >
+              <KeyRound size={14} />
+            </button>
+          </>
         )}
         emptyMessage="Nenhuma mentorada cadastrada ainda."
       />

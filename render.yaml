@@ -21,6 +21,10 @@ services:
         value: https://mentoria-sublime.onrender.com
       - key: CORS_ORIGIN
         value: https://mentoria-sublime.onrender.com
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        value: "Mentoria Sublime <nao-responda@suellenwarmling.com.br>"
       - key: UPLOADS_PATH
         value: /app/data/uploads
       - key: TURSO_DATABASE_URL

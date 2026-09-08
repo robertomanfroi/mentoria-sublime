@@ -54,5 +54,6 @@ router.put('/settings', adminController.updateSettings);
 // Password Reset
 router.get('/password-reset-requests', adminController.listPasswordResetRequests);
 router.put('/users/:id/reset-password', adminController.resetUserPassword);
+router.post('/users/:id/resend-reset-link', adminController.resendPasswordResetLink);
 
 module.exports = router;

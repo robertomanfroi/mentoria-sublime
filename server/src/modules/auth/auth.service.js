@@ -1,7 +1,15 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { prepare } = require('../../config/database');
-const { JWT_SECRET, JWT_EXPIRES_IN } = require('../../config/env');
+const { JWT_SECRET, JWT_EXPIRES_IN, APP_URL } = require('../../config/env');
+const { sendPasswordResetEmail } = require('../../services/email.service');
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 function generateToken(user) {
   return jwt.sign(
@@ -110,20 +118,67 @@ async function me(userId) {
   return mapUser(row);
 }
 
+async function issuePasswordResetToken(user) {
+  // Invalida tokens anteriores ainda não usados
+  await prepare("UPDATE password_reset_tokens SET used_at = datetime('now') WHERE user_id = ? AND used_at IS NULL").run(user.id);
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = hashToken(rawToken);
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString();
+
+  await prepare('INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)')
+    .run(user.id, tokenHash, expiresAt);
+
+  const resetUrl = `${APP_URL.replace(/\/$/, '')}/redefinir-senha?token=${rawToken}`;
+  await sendPasswordResetEmail({ to: user.email, name: user.name, resetUrl });
+}
+
 async function forgotPassword({ email }) {
   if (!email) {
     const err = new Error('E-mail é obrigatório.');
     err.status = 400;
     throw err;
   }
-  const user = await prepare('SELECT id FROM users WHERE email = ? AND deleted_at IS NULL').get(email.toLowerCase().trim());
+  const user = await prepare('SELECT id, name, email FROM users WHERE email = ? AND deleted_at IS NULL').get(email.toLowerCase().trim());
   // Retorna sucesso mesmo se e-mail não existe (segurança)
   if (user) {
-    // Cancela solicitações anteriores pendentes
+    // Mantém o registro histórico usado pelo painel admin
     await prepare("UPDATE password_reset_requests SET status = 'cancelled' WHERE user_id = ? AND status = 'pending'").run(user.id);
     await prepare('INSERT INTO password_reset_requests (user_id, status) VALUES (?, ?)').run(user.id, 'pending');
+    await issuePasswordResetToken(user);
   }
-  return { message: 'Se o e-mail existir, a solicitação foi registrada.' };
+  return { message: 'Se o e-mail existir, enviamos um link de redefinição.' };
 }
 
-module.exports = { register, login, me, mapUser, forgotPassword };
+async function resetPassword({ token, new_password }) {
+  if (!token || !new_password) {
+    const err = new Error('Token e nova senha são obrigatórios.');
+    err.status = 400;
+    throw err;
+  }
+  if (new_password.length < 6) {
+    const err = new Error('A senha deve ter pelo menos 6 caracteres.');
+    err.status = 400;
+    throw err;
+  }
+
+  const tokenHash = hashToken(token);
+  const record = await prepare(
+    "SELECT * FROM password_reset_tokens WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')"
+  ).get(tokenHash);
+
+  if (!record) {
+    const err = new Error('Link de redefinição inválido ou expirado.');
+    err.status = 400;
+    throw err;
+  }
+
+  const password_hash = bcrypt.hashSync(new_password, 10);
+  await prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(password_hash, record.user_id);
+  await prepare("UPDATE password_reset_tokens SET used_at = datetime('now') WHERE id = ?").run(record.id);
+  await prepare("UPDATE password_reset_requests SET status = 'resolved' WHERE user_id = ? AND status = 'pending'").run(record.user_id);
+
+  return { message: 'Senha redefinida com sucesso.' };
+}
+
+module.exports = { register, login, me, mapUser, forgotPassword, resetPassword, issuePasswordResetToken };

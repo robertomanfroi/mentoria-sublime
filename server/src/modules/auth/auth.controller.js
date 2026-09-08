@@ -36,4 +36,13 @@ async function forgotPassword(req, res, next) {
   }
 }
 
-module.exports = { register, login, me, forgotPassword };
+async function resetPassword(req, res, next) {
+  try {
+    const result = await authService.resetPassword(req.body);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { register, login, me, forgotPassword, resetPassword };

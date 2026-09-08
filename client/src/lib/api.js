@@ -41,6 +41,7 @@ export const authApi = {
   register: (data) => api.post('/auth/register', data),
   me: () => api.get('/auth/me'),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, new_password) => api.post('/auth/reset-password', { token, new_password }),
 }
 
 // User/mentoradas endpoints
@@ -94,6 +95,7 @@ export const adminApi = {
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   resetUserPassword: (id, new_password) => api.put(`/admin/users/${id}/reset-password`, { new_password }),
   getPasswordResetRequests: () => api.get('/admin/password-reset-requests'),
+  resendResetLink: (id) => api.post(`/admin/users/${id}/resend-reset-link`),
   getPendingValidations: (month) => api.get('/admin/validations', { params: month ? { month } : {} }),
   validateSubmission: (id, approved, rejection_reason) =>
     api.put(`/admin/validations/${id}`, { approved, rejection_reason }),

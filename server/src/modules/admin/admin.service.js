@@ -548,6 +548,19 @@ async function listPasswordResetRequests() {
   `).all();
 }
 
+async function resendPasswordResetLink(userId) {
+  const user = await prepare('SELECT id, name, email FROM users WHERE id = ? AND deleted_at IS NULL').get(userId);
+  if (!user) {
+    const err = new Error('Usuário não encontrado.');
+    err.status = 404;
+    throw err;
+  }
+  // Lazy require evita dependência circular no carregamento dos módulos
+  const { issuePasswordResetToken } = require('../auth/auth.service');
+  await issuePasswordResetToken(user);
+  return { message: `Link de redefinição reenviado para ${user.email}.` };
+}
+
 module.exports = {
   listUsers, updateUser, deleteUser,
   listChecklistItems, addChecklistItem, updateChecklistItem, deleteChecklistItem,
@@ -557,5 +570,5 @@ module.exports = {
   exportCSV,
   getSettings, updateSettings,
   getMonthDiagnostic, getMonthlyHistory,
-  resetUserPassword, listPasswordResetRequests,
+  resetUserPassword, listPasswordResetRequests, resendPasswordResetLink,
 };

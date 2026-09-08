@@ -170,6 +170,10 @@ async function listPasswordResetRequests(req, res, next) {
   try { res.json(await adminService.listPasswordResetRequests()); } catch (err) { next(err); }
 }
 
+async function resendPasswordResetLink(req, res, next) {
+  try { res.json(await adminService.resendPasswordResetLink(req.params.id)); } catch (err) { next(err); }
+}
+
 module.exports = {
   listUsers, updateUser, deleteUser,
   listChecklistItems, addChecklistItem, updateChecklistItem, deleteChecklistItem,
@@ -179,5 +183,5 @@ module.exports = {
   exportCSV,
   getSettings, updateSettings,
   getMonthDiagnostic, getMonthlyHistory,
-  resetUserPassword, listPasswordResetRequests,
+  resetUserPassword, listPasswordResetRequests, resendPasswordResetLink,
 };
