@@ -25,9 +25,9 @@ function getRevenueTierScore(revenue) {
 
 function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights) {
   const w = {
-    checklist: weights?.checklist ?? 0.34,
-    revenue: weights?.revenue ?? 0.33,
-    followers: weights?.followers ?? 0.33,
+    checklist: weights?.checklist ?? 0.25,
+    revenue: weights?.revenue ?? 0.50,
+    followers: weights?.followers ?? 0.25,
   };
   // Usa todos os dados recebidos — filtragem é responsabilidade do caller
   const validated = allMonthlyData;

@@ -191,54 +191,87 @@ async function getMyPosition(userId, month) {
   return myEntry;
 }
 
+// Converte 'YYYY-MM' em um índice inteiro de meses (para subtração de datas)
+function monthIndex(monthStr) {
+  const [y, m] = monthStr.split('-').map(Number);
+  return y * 12 + m;
+}
+
+// Meses entre o primeiro mês preenchido e o mês de referência (ambos inclusos)
+function monthsInPeriod(firstMonth, referenceMonth) {
+  return monthIndex(referenceMonth) - monthIndex(firstMonth) + 1;
+}
+
 async function getGeneralRanking() {
   const cached = getCached('ranking-geral');
   if (cached) return cached;
 
-  // Agrega todos os snapshots por usuário: média dos total_score e contagem de meses
+  // Busca todos os snapshots individuais (não agregados) para calcular a média
+  // ponderada pelo período total desde o primeiro mês preenchido por cada usuária —
+  // meses sem preenchimento no meio do período contam como zero, então quem
+  // preenche pouco em relação ao tempo de mentoria não fica artificialmente bem
+  // posicionada por causa de um único mês bom.
   const rows = await prepare(`
-    SELECT rs.user_id,
-           AVG(rs.total_score)      AS avg_score,
-           SUM(rs.total_score)      AS sum_score,
-           COUNT(rs.month)          AS months_count,
-           MAX(rs.total_score)      AS best_score,
-           AVG(rs.checklist_score)  AS avg_checklist,
-           AVG(rs.revenue_score)    AS avg_revenue,
-           AVG(rs.followers_score)  AS avg_followers,
-           COALESCE(fg.followers_gained, 0) AS followers_gained,
+    SELECT rs.user_id, rs.month, rs.total_score, rs.checklist_score, rs.revenue_score, rs.followers_score,
            u.name, u.instagram_handle, u.profile_photo
     FROM ranking_snapshots rs
     JOIN users u ON u.id = rs.user_id AND u.role != 'admin'
-    LEFT JOIN (
-      SELECT user_id,
-             SUM(COALESCE(followers_count, 0) - COALESCE(followers_previous, 0)) AS followers_gained
-      FROM monthly_data
-      WHERE validated_by_admin = 1
-      GROUP BY user_id
-    ) fg ON fg.user_id = rs.user_id
-    GROUP BY rs.user_id
-    ORDER BY avg_score DESC, months_count DESC
+    ORDER BY rs.user_id, rs.month
   `).all();
 
   if (rows.length === 0) return { data: [], total: 0 };
 
-  const result = rows.map((r, i) => ({
-    position: i + 1,
-    user_id: r.user_id,
-    name: r.name,
-    instagram_handle: r.instagram_handle,
-    avatar_url: r.profile_photo ? `/uploads/${r.profile_photo}` : null,
-    avg_score: Math.round(r.avg_score * 100) / 100,
-    sum_score: Math.round(r.sum_score * 100) / 100,
-    best_score: Math.round(r.best_score * 100) / 100,
-    months_count: r.months_count,
-    avg_checklist: Math.round(r.avg_checklist * 100) / 100,
-    avg_revenue: Math.round(r.avg_revenue * 100) / 100,
-    avg_followers: Math.round(r.avg_followers * 100) / 100,
-    followers_gained: r.followers_gained || 0,
-    checklist_score: Math.round(r.avg_checklist * 100) / 100, // alias para StarGroup
-    total_score: Math.round(r.avg_score * 100) / 100, // alias para compatibilidade com componentes
-  }));
+  const followersRows = await prepare(`
+    SELECT user_id,
+           SUM(COALESCE(followers_count, 0) - COALESCE(followers_previous, 0)) AS followers_gained
+    FROM monthly_data
+    WHERE validated_by_admin = 1
+    GROUP BY user_id
+  `).all();
+  const followersGainedByUser = new Map(followersRows.map((r) => [r.user_id, r.followers_gained || 0]));
+
+  const referenceMonth = rows.reduce((max, r) => (r.month > max ? r.month : max), rows[0].month);
+
+  const byUser = new Map();
+  for (const r of rows) {
+    if (!byUser.has(r.user_id)) byUser.set(r.user_id, []);
+    byUser.get(r.user_id).push(r);
+  }
+
+  const result = [];
+  for (const [userId, recs] of byUser) {
+    const firstMonth = recs.reduce((min, r) => (r.month < min ? r.month : min), recs[0].month);
+    const totalMonths = monthsInPeriod(firstMonth, referenceMonth);
+    const monthsCount = recs.length;
+    const sumScore = recs.reduce((acc, r) => acc + r.total_score, 0);
+    const sumChecklist = recs.reduce((acc, r) => acc + r.checklist_score, 0);
+    const sumRevenue = recs.reduce((acc, r) => acc + r.revenue_score, 0);
+    const sumFollowers = recs.reduce((acc, r) => acc + r.followers_score, 0);
+    const bestScore = Math.max(...recs.map((r) => r.total_score));
+
+    result.push({
+      user_id: userId,
+      name: recs[0].name,
+      instagram_handle: recs[0].instagram_handle,
+      avatar_url: recs[0].profile_photo ? `/uploads/${recs[0].profile_photo}` : null,
+      avg_score: Math.round((sumScore / totalMonths) * 100) / 100,
+      sum_score: Math.round(sumScore * 100) / 100,
+      best_score: Math.round(bestScore * 100) / 100,
+      months_count: monthsCount,
+      months_period: totalMonths,
+      avg_checklist: Math.round((sumChecklist / totalMonths) * 100) / 100,
+      avg_revenue: Math.round((sumRevenue / totalMonths) * 100) / 100,
+      avg_followers: Math.round((sumFollowers / totalMonths) * 100) / 100,
+      followers_gained: followersGainedByUser.get(userId) || 0,
+    });
+  }
+
+  result.sort((a, b) => (b.avg_score - a.avg_score) || (b.months_count - a.months_count));
+  result.forEach((r, i) => {
+    r.position = i + 1;
+    r.checklist_score = r.avg_checklist; // alias para StarGroup
+    r.total_score = r.avg_score; // alias para compatibilidade com componentes
+  });
 
   setCache('ranking-geral', result);
   return { data: result, total: result.length };

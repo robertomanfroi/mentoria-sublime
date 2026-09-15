@@ -494,7 +494,7 @@ async function exportCSV() {
 }
 
 const SETTINGS_DEFAULTS = {
-  ranking_weights: { checklist: 0.34, revenue: 0.33, followers: 0.33 },
+  ranking_weights: { checklist: 0.25, revenue: 0.50, followers: 0.25 },
   max_revenue_score: 100,
 };
 
