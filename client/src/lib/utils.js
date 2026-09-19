@@ -72,6 +72,14 @@ export function getLastNMonths(n = 12) {
   return months
 }
 
+/** Meses de `startMonth` ("YYYY-MM") até o mês atual, do mais recente para o mais antigo. */
+export function getMonthsSince(startMonth) {
+  const [sy, sm] = startMonth.split('-').map(Number)
+  const now = new Date()
+  const n = (now.getFullYear() - sy) * 12 + (now.getMonth() + 1 - sm) + 1
+  return getLastNMonths(Math.max(n, 1))
+}
+
 /**
  * Calcula percentual de crescimento entre dois valores.
  */

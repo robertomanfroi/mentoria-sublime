@@ -1,8 +1,16 @@
 const { prepare } = require('../../config/database');
 
+// Início da mentoria: meses anteriores não podem ser preenchidos
+const FIRST_MONTH = '2025-10';
+
 function validateMonth(month) {
   if (!/^\d{4}-\d{2}$/.test(month)) {
     const err = new Error('Formato de mês inválido. Use YYYY-MM.');
+    err.status = 400;
+    throw err;
+  }
+  if (month < FIRST_MONTH) {
+    const err = new Error('A mentoria começou em outubro de 2025. Escolha um mês a partir dessa data.');
     err.status = 400;
     throw err;
   }

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Upload, X, ChevronDown, CheckCircle } from 'lucide-react'
 import { useApi } from '../hooks/useApi'
 import { monthlyApi } from '../lib/api'
-import { getCurrentMonth, getLastNMonths, formatMonth, formatNumber } from '../lib/utils'
+import { getCurrentMonth, getMonthsSince, formatMonth, formatNumber } from '../lib/utils'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -16,7 +16,8 @@ const CREAM     = '#F6F2E7'
 const BEIGE     = '#D8D1C1'
 const DARK      = '#292929'
 
-const months = getLastNMonths(12)
+// A mentoria começou em outubro/2025: todos os meses desde então podem ser preenchidos
+const months = getMonthsSince('2025-10')
 
 const statusConfig = {
   pending:  { variant: 'warning', label: 'Pendente' },
