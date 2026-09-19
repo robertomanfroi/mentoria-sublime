@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { prepare, executeTransaction } = require('../../config/database');
-const { calculateMonthRanking, assignPositions, getRevenueGrowthPct } = require('../../utils/rankingCalculator');
+const { FIRST_MONTH, calculateMonthRanking, assignPositions, getRevenueGrowthPct } = require('../../utils/rankingCalculator');
 const { buildChecklistProgressMap, invalidateRankingCache } = require('../ranking/ranking.service');
 const { getCurrentMonth } = require('../../utils/formatters');
 
@@ -399,6 +399,10 @@ async function calculateAndSaveRanking(month) {
     const err = new Error('Formato de mês inválido. Use YYYY-MM.'); err.status = 400; throw err;
   }
 
+  if (month < FIRST_MONTH) {
+    return { message: `Meses anteriores a ${FIRST_MONTH} não entram no ranking.`, count: 0 };
+  }
+
   if (rankingLocks.get(month)) {
     const err = new Error(`Cálculo de ranking para ${month} já está em andamento.`); err.status = 409; throw err;
   }
@@ -461,8 +465,8 @@ async function reopenForLastYearRevenue(adminId = null) {
     SELECT md.id, md.month
     FROM monthly_data md
     JOIN users u ON u.id = md.user_id AND u.role = 'mentorada' AND u.deleted_at IS NULL
-    WHERE md.yoy_status IS NULL AND md.revenue_last_year IS NULL
-  `).all();
+    WHERE md.yoy_status IS NULL AND md.revenue_last_year IS NULL AND md.month >= ?
+  `).all(FIRST_MONTH);
 
   if (targets.length === 0) return { reopened: 0, months: [] };
 
@@ -502,7 +506,7 @@ async function reopenForLastYearRevenueOnce() {
 
 /** Recalcula o ranking de todos os meses com dados. */
 async function recalculateAllRankings() {
-  const rows = await prepare('SELECT DISTINCT month FROM monthly_data ORDER BY month ASC').all();
+  const rows = await prepare('SELECT DISTINCT month FROM monthly_data WHERE month >= ? ORDER BY month ASC').all(FIRST_MONTH);
   const results = [];
   for (const { month } of rows) {
     // Mês sem nenhum aprovado: limpa snapshots remanescentes (arquivando antes)

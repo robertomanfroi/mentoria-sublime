@@ -16,8 +16,8 @@ const CREAM     = '#F6F2E7'
 const BEIGE     = '#D8D1C1'
 const DARK      = '#292929'
 
-// A mentoria começou em outubro/2025: todos os meses desde então podem ser preenchidos
-const months = getMonthsSince('2025-10')
+// A mentoria vale para o ranking a partir de novembro/2025
+const months = getMonthsSince('2025-11')
 
 const statusConfig = {
   pending:  { variant: 'warning', label: 'Pendente' },

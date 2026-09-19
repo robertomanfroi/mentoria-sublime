@@ -8,6 +8,9 @@
  * @returns {Array} Array de { user_id, checklist_score, revenue_score, followers_score, total_score, position }
  */
 
+// A mentoria passou a valer para o ranking a partir de novembro/2025
+const FIRST_MONTH = '2025-11';
+
 // Faixas de faturamento absoluto (R$) → score 0-100
 const REVENUE_TIERS = [
   { min: 20000, score: 100 },
@@ -133,4 +136,4 @@ function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights)
   return assignPositions(results);
 }
 
-module.exports = { calculateMonthRanking, assignPositions, getRevenueTierScore, getRevenueBase, getRevenueGrowthPct };
+module.exports = { FIRST_MONTH, calculateMonthRanking, assignPositions, getRevenueTierScore, getRevenueBase, getRevenueGrowthPct };

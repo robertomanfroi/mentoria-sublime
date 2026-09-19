@@ -1,5 +1,5 @@
 const { prepare } = require('../../config/database');
-const { calculateMonthRanking, getRevenueGrowthPct } = require('../../utils/rankingCalculator');
+const { FIRST_MONTH, calculateMonthRanking, getRevenueGrowthPct } = require('../../utils/rankingCalculator');
 
 // Cache simples em memória (TTL: 60 segundos)
 const rankingCache = new Map();
@@ -56,6 +56,9 @@ async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
     err.status = 400;
     throw err;
   }
+
+  // Meses anteriores ao início da mentoria não entram no ranking
+  if (month < FIRST_MONTH) return { data: [], total: 0, page: 1, totalPages: 0 };
 
   const cached = getCached(`ranking-${month}`);
   if (cached) return cached;
@@ -212,8 +215,9 @@ async function getGeneralRanking() {
            u.name, u.instagram_handle, u.profile_photo
     FROM ranking_snapshots rs
     JOIN users u ON u.id = rs.user_id AND u.role != 'admin'
+    WHERE rs.month >= ?
     ORDER BY rs.user_id, rs.month
-  `).all();
+  `).all(FIRST_MONTH);
 
   if (rows.length === 0) return { data: [], total: 0 };
 
@@ -221,9 +225,9 @@ async function getGeneralRanking() {
     SELECT user_id,
            SUM(COALESCE(followers_count, 0) - COALESCE(followers_previous, 0)) AS followers_gained
     FROM monthly_data
-    WHERE validated_by_admin = 1
+    WHERE validated_by_admin = 1 AND month >= ?
     GROUP BY user_id
-  `).all();
+  `).all(FIRST_MONTH);
   const followersGainedByUser = new Map(followersRows.map((r) => [r.user_id, r.followers_gained || 0]));
 
   const referenceMonth = rows.reduce((max, r) => (r.month > max ? r.month : max), rows[0].month);
