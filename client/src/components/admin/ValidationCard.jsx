@@ -38,6 +38,9 @@ export default function ValidationCard({ submission, onValidated }) {
   }
 
   const gained = (submission.followers_count || 0) - (submission.followers_previous || 0)
+  const yoyGrowth = submission.revenue && submission.revenue_last_year
+    ? ((submission.revenue - submission.revenue_last_year) / submission.revenue_last_year) * 100
+    : null
 
   return (
     <Card variant="default" className="animate-fade-in-up">
@@ -95,6 +98,23 @@ export default function ValidationCard({ submission, onValidated }) {
             {submission.revenue
               ? `R$ ${formatNumber(submission.revenue)}`
               : '—'}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-body text-dark/50 mb-0.5">Mesmo mês ano anterior</p>
+          <p className="text-sm font-body font-semibold text-dark">
+            {submission.revenue_last_year != null
+              ? `R$ ${formatNumber(submission.revenue_last_year)}`
+              : '—'}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-body text-dark/50 mb-0.5">Crescimento anual</p>
+          <p
+            className="text-sm font-body font-semibold"
+            style={{ color: yoyGrowth === null ? undefined : yoyGrowth >= 0 ? '#3a8040' : '#c0392b' }}
+          >
+            {yoyGrowth === null ? '—' : `${yoyGrowth >= 0 ? '+' : ''}${formatNumber(Math.round(yoyGrowth * 10) / 10)}%`}
           </p>
         </div>
       </div>

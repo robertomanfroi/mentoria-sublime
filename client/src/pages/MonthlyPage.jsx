@@ -70,6 +70,7 @@ export default function MonthlyPage() {
   const [followersPreviousStr, setFollowersPrevious] = useState('')
   const [revenueCurrentStr, setRevenueCurrent]       = useState('')
   const [revenuePreviousStr, setRevenuePrevious]     = useState('')
+  const [revenueLastYearStr, setRevenueLastYear]     = useState('')
   const [printFile, setPrintFile]               = useState(null)
   const [printPreview, setPrintPreview]         = useState('')
   const [dragging, setDragging]                 = useState(false)
@@ -89,11 +90,15 @@ export default function MonthlyPage() {
       setFollowersPrevious(String(monthData.followers_previous || ''))
       setRevenueCurrent(String(monthData.revenue || ''))
       setRevenuePrevious(String(monthData.revenue_previous || ''))
+      // Valor já informado; senão, sugere o faturamento que ela registrou no mesmo mês do ano anterior
+      const lastYear = monthData.revenue_last_year ?? monthData.revenue_last_year_suggestion
+      setRevenueLastYear(lastYear === null || lastYear === undefined ? '' : String(lastYear))
     } else {
       setFollowersCurrent('')
       setFollowersPrevious('')
       setRevenueCurrent('')
       setRevenuePrevious('')
+      setRevenueLastYear('')
     }
   }, [monthData])
 
@@ -130,6 +135,11 @@ export default function MonthlyPage() {
       setError('Informe o número atual de seguidores antes de enviar.')
       return
     }
+    const lastYearNum = Number(revenueLastYearStr)
+    if (!revenueLastYearStr.trim() || !Number.isFinite(lastYearNum) || lastYearNum < 0) {
+      setError(`Informe o faturamento de ${lastYearLabel} (use 0 se não faturou).`)
+      return
+    }
     const numFields = [
       [followersPreviousStr, 'Seguidores (mês anterior)'],
       [revenueCurrentStr, 'Faturamento (atual)'],
@@ -145,16 +155,26 @@ export default function MonthlyPage() {
     setSaving(true)
     setError('')
     try {
-      await monthlyApi.submit(selectedMonth, {
+      const payload = {
         followers_count:    followersCurrent,
         followers_previous: followersPreviousStr.trim() ? Number(followersPreviousStr) : null,
         revenue:            revenueCurrentStr.trim() ? Number(revenueCurrentStr) : null,
         revenue_previous:   revenuePreviousStr.trim() ? Number(revenuePreviousStr) : null,
-      })
-      if (printFile) {
+        revenue_last_year:  lastYearNum,
+      }
+      async function sendProof() {
+        if (!printFile) return
         const fd = new FormData()
         fd.append('proof', printFile)
         await monthlyApi.uploadProof(selectedMonth, fd)
+      }
+      // Mês reaberto trava após o reenvio dos dados: o print vai antes
+      if (reopened) {
+        await sendProof()
+        await monthlyApi.submit(selectedMonth, payload)
+      } else {
+        await monthlyApi.submit(selectedMonth, payload)
+        await sendProof()
       }
       setSuccess(true)
       refetch()
@@ -165,12 +185,16 @@ export default function MonthlyPage() {
     }
   }
 
-  const submission = monthData && !monthData.error ? monthData : null
+  const submission = monthData && !monthData.error && monthData.id ? monthData : null
   const status     = submission?.validated_by_admin === 1 ? 'approved'
                    : submission?.validated_by_admin === 2 ? 'rejected'
                    : submission ? 'pending' : null
   const statusInfo = statusConfig[status] || null
-  const locked     = status === 'approved'
+  const reopened   = submission?.yoy_status === 'solicitado'
+  const resent     = status === 'pending' && submission?.yoy_status === 'enviado'
+  const locked     = status === 'approved' || resent
+  const [selYear, selMonthNum] = selectedMonth.split('-')
+  const lastYearLabel = `${formatMonth(`${Number(selYear) - 1}-${selMonthNum}`)}`
 
   return (
     <div
@@ -231,6 +255,24 @@ export default function MonthlyPage() {
         </div>
       )}
 
+      {/* ── Pedido de faturamento do ano anterior ─────────────── */}
+      {reopened && (
+        <div
+          className="p-4 rounded-xl animate-fade-in-up"
+          style={{ background: 'rgba(199,170,137,0.10)', border: `1px solid ${GOLD}` }}
+        >
+          <p className="text-sm font-body font-semibold" style={{ color: BROWN }}>
+            A mentora pediu uma informação a mais neste mês
+          </p>
+          <p className="text-sm font-body mt-1" style={{ color: DARK }}>
+            Informe quanto você faturou em <strong>{lastYearLabel}</strong>. O ranking agora compara o seu faturamento com o mesmo mês do ano anterior.
+          </p>
+          <p className="text-xs font-body mt-2" style={{ color: `${DARK}80` }}>
+            Confira os dados antes de enviar: depois do envio este mês não poderá mais ser editado.
+          </p>
+        </div>
+      )}
+
       {loading ? (
         <LoadingSpinner centered />
       ) : (
@@ -279,6 +321,22 @@ export default function MonthlyPage() {
               subtitle="Seus dados de faturamento são confidenciais e nunca aparecem para outras mentoradas."
               badge={<Badge variant="default">🔒 Privado</Badge>}
             >
+              <div className="mb-4">
+                <Input
+                  label={`Faturamento em ${lastYearLabel} (mesmo mês do ano anterior) *`}
+                  type="number"
+                  value={revenueLastYearStr}
+                  onChange={e => setRevenueLastYear(e.target.value)}
+                  min={0}
+                  step="0.01"
+                  required
+                />
+                {submission?.revenue_last_year == null && submission?.revenue_last_year_suggestion != null && (
+                  <p className="text-xs font-body mt-1" style={{ color: `${MID}90` }}>
+                    Preenchido com o valor que você informou em {lastYearLabel}. Pode corrigir se precisar.
+                  </p>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <Input
                   label="Faturamento (mês anterior)"
@@ -394,7 +452,9 @@ export default function MonthlyPage() {
             >
               <CheckCircle size={16} style={{ color: '#3a8040', flexShrink: 0 }} />
               <p className="text-sm font-body" style={{ color: '#3a8040' }}>
-                Este mês já foi validado pela mentora e não pode mais ser alterado.
+                {resent
+                  ? 'Dados reenviados. Aguardando a validação da mentora — este mês não pode mais ser alterado.'
+                  : 'Este mês já foi validado pela mentora e não pode mais ser alterado.'}
               </p>
             </div>
           ) : (
@@ -476,7 +536,9 @@ export default function MonthlyPage() {
                   const mStatus = m.validated_by_admin === 1 ? 'approved'
                                 : m.validated_by_admin === 2 ? 'rejected'
                                 : 'pending'
-                  const s = statusConfig[mStatus]
+                  const s = m.yoy_status === 'solicitado'
+                    ? { variant: 'warning', label: 'Completar ano anterior' }
+                    : statusConfig[mStatus]
                   return (
                     <tr key={m.month} style={{ borderBottom: `1px solid rgba(216,209,193,0.2)` }}>
                       <td className="py-2.5 font-medium" style={{ color: DARK }}>{formatMonth(m.month)}</td>

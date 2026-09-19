@@ -22,8 +22,8 @@ async function getByMonth(req, res, next) {
 async function upsertMonth(req, res, next) {
   try {
     const row = await monthlyService.upsertMonth(req.user.id, req.params.month, req.body);
-    const { revenue, revenue_previous, ...safe } = row;
-    res.json({ ...safe, revenue, revenue_previous });
+    const { revenue, revenue_previous, revenue_last_year, ...safe } = row;
+    res.json({ ...safe, revenue, revenue_previous, revenue_last_year });
   } catch (err) {
     next(err);
   }

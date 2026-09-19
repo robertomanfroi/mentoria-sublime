@@ -1,7 +1,8 @@
 /**
  * Calcula o ranking de um mês.
  *
- * @param {Array} allMonthlyData - Array de { user_id, followers_count, followers_previous, revenue, revenue_previous, validated_by_admin }
+ * @param {Array} allMonthlyData - Array de { user_id, followers_count, followers_previous, revenue, revenue_previous,
+ *   revenue_last_year, checklist_score_frozen, validated_by_admin }
  * @param {Object} checklistProgressByUser - { [user_id]: { completed: Number, total: Number } }
  * @param {Object} weights - { checklist, revenue, followers } (opcional)
  * @returns {Array} Array de { user_id, checklist_score, revenue_score, followers_score, total_score, position }
@@ -23,6 +24,21 @@ function getRevenueTierScore(revenue) {
   return 0;
 }
 
+// Base de comparação do faturamento: mesmo mês do ano anterior; legado cai no mês anterior.
+function getRevenueBase(data) {
+  if (data.revenue_last_year !== null && data.revenue_last_year !== undefined) {
+    return data.revenue_last_year || 0;
+  }
+  return data.revenue_previous || 0;
+}
+
+// Crescimento % do faturamento sobre a base (null quando não há base para comparar)
+function getRevenueGrowthPct(data) {
+  const base = getRevenueBase(data);
+  if (!data.revenue || !base) return null;
+  return ((data.revenue - base) / base) * 100;
+}
+
 function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights) {
   const w = {
     checklist: weights?.checklist ?? 0.25,
@@ -35,24 +51,31 @@ function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights)
   if (validated.length === 0) return [];
 
   // --- Checklist Score ---
-  // Score checklist: (completed/total)*100
-  function getChecklistScore(userId) {
-    const progress = checklistProgressByUser[userId];
+  // Score checklist: (completed/total)*100.
+  // Mês reaberto para o ano anterior usa a nota congelada na reabertura —
+  // o checklist de hoje não reescreve meses passados.
+  function getChecklistScore(data) {
+    if (data.checklist_score_frozen !== null && data.checklist_score_frozen !== undefined) {
+      return data.checklist_score_frozen;
+    }
+    const progress = checklistProgressByUser[data.user_id];
     if (!progress || progress.total === 0) return 0;
     return (progress.completed / progress.total) * 100;
   }
 
   // --- Revenue Score ---
   // Híbrido: 50% crescimento percentual (cap 100, negativo = 0) + 50% faixa de valor absoluto.
-  // Sem mês anterior (rev_prev = 0): usa apenas a faixa de valor absoluto (100% do peso).
+  // Base do crescimento: mesmo mês do ano anterior (tira a sazonalidade).
+  // Registro legado sem esse valor mantém a base antiga (mês anterior).
+  // Base zerada: usa apenas a faixa de valor absoluto (100% do peso).
   function getRevenueScore(data) {
     const rev = data.revenue || 0;
-    const revPrev = data.revenue_previous || 0;
+    const base = getRevenueBase(data);
     const tierScore = getRevenueTierScore(rev);
 
-    if (revPrev === 0) return tierScore;
+    if (base === 0) return tierScore;
 
-    const growth = ((rev - revPrev) / revPrev) * 100;
+    const growth = ((rev - base) / base) * 100;
     const growthScore = growth < 0 ? 0 : Math.min(growth, 100);
     return growthScore * 0.5 + tierScore * 0.5;
   }
@@ -72,7 +95,7 @@ function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights)
 
   // --- Total Score ---
   const results = validated.map(data => {
-    const checklistScore = getChecklistScore(data.user_id);
+    const checklistScore = getChecklistScore(data);
     const revenueScore = getRevenueScore(data);
     const followersScore = getFollowersScore(data);
     const totalScore =
@@ -108,4 +131,4 @@ function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights)
   return results;
 }
 
-module.exports = { calculateMonthRanking, getRevenueTierScore };
+module.exports = { calculateMonthRanking, getRevenueTierScore, getRevenueBase, getRevenueGrowthPct };

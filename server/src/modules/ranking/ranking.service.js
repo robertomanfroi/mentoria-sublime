@@ -1,5 +1,5 @@
 const { prepare } = require('../../config/database');
-const { calculateMonthRanking } = require('../../utils/rankingCalculator');
+const { calculateMonthRanking, getRevenueGrowthPct } = require('../../utils/rankingCalculator');
 
 // Cache simples em memória (TTL: 60 segundos)
 const rankingCache = new Map();
@@ -62,7 +62,7 @@ async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
 
   const snapshots = await prepare(`
     SELECT rs.*, u.name, u.instagram_handle, u.profile_photo,
-           md.followers_count, md.followers_previous, md.revenue, md.revenue_previous
+           md.followers_count, md.followers_previous, md.revenue, md.revenue_previous, md.revenue_last_year
     FROM ranking_snapshots rs
     JOIN users u ON u.id = rs.user_id AND u.role != 'admin'
     LEFT JOIN monthly_data md ON md.user_id = rs.user_id AND md.month = rs.month
@@ -73,9 +73,7 @@ async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
   if (snapshots.length > 0) {
     const result = snapshots.map((s, i) => {
       const followersGained = (s.followers_count || 0) - (s.followers_previous || 0);
-      const revenueGrowthPct = (s.revenue && s.revenue_previous)
-        ? ((s.revenue - s.revenue_previous) / s.revenue_previous) * 100
-        : 0;
+      const revenueGrowthPct = getRevenueGrowthPct(s) ?? 0;
       return {
         position: s.position || i + 1,
         user_id: s.user_id,
@@ -125,9 +123,7 @@ async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
     const user = userMap[s.user_id] || {};
     const md = monthlyMap[s.user_id] || {};
     const followersGained = (md.followers_count || 0) - (md.followers_previous || 0);
-    const revenueGrowthPct = (md.revenue && md.revenue_previous)
-      ? ((md.revenue - md.revenue_previous) / md.revenue_previous) * 100
-      : 0;
+    const revenueGrowthPct = getRevenueGrowthPct(md) ?? 0;
     return {
       position: s.position,
       user_id: s.user_id,

@@ -110,6 +110,8 @@ export const adminApi = {
     }),
   getDiagnostic: (month) => api.get('/admin/diagnostic', { params: { month } }),
   getMonthlyHistory: () => api.get('/admin/monthly-history'),
+  reopenLastYearRevenue: () => api.post('/admin/monthly/reopen-last-year'),
+  recalculateAllRankings: () => api.post('/admin/ranking/recalculate-all'),
   unapproveValidation: (id) => api.put(`/admin/validations/${id}/unapprove`),
 }
 

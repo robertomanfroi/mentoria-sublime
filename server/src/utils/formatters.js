@@ -4,7 +4,7 @@
  */
 function sanitizeMonthlyData(row) {
   if (!row) return row;
-  const { revenue, revenue_previous, ...safe } = row;
+  const { revenue, revenue_previous, revenue_last_year, ...safe } = row;
   return safe;
 }
 

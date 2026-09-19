@@ -8,10 +8,28 @@ function validateMonth(month) {
   }
 }
 
+const LOCKED_AFTER_RESEND_MSG = 'Você já reenviou este mês com o faturamento do ano anterior. Aguarde a validação da mentora.';
+
+// Mesmo mês do ano anterior: "2026-09" → "2025-09"
+function sameMonthLastYear(month) {
+  const [y, m] = month.split('-');
+  return `${Number(y) - 1}-${m}`;
+}
+
+// Travado quando aprovado, ou quando já reenviado após a reabertura do ano anterior
+function lockMessage(row) {
+  if (!row) return null;
+  if (row.validated_by_admin === 1) {
+    return 'Este mês já foi validado pela mentora e não pode mais ser alterado. Fale com o suporte se precisar corrigir.';
+  }
+  if (row.validated_by_admin === 0 && row.yoy_status === 'enviado') return LOCKED_AFTER_RESEND_MSG;
+  return null;
+}
+
 async function getHistory(userId) {
   return prepare(
     `SELECT id, user_id, month, followers_count, followers_previous,
-       instagram_proof_image, validated_by_admin, rejection_reason, created_at, updated_at
+       instagram_proof_image, yoy_status, validated_by_admin, rejection_reason, created_at, updated_at
      FROM monthly_data WHERE user_id = ? ORDER BY month DESC`
   ).all(userId);
 }
@@ -20,11 +38,19 @@ async function getByMonth(userId, month) {
   validateMonth(month);
   const row = await prepare(
     `SELECT id, user_id, month, followers_count, followers_previous,
-       revenue, revenue_previous,
+       revenue, revenue_previous, revenue_last_year, yoy_status,
        instagram_proof_image, validated_by_admin, rejection_reason, created_at, updated_at
      FROM monthly_data WHERE user_id = ? AND month = ?`
   ).get(userId, month);
-  return row || null;
+
+  // Sugestão: faturamento que ela mesma informou no mesmo mês do ano anterior
+  const lastYear = await prepare(
+    'SELECT revenue FROM monthly_data WHERE user_id = ? AND month = ? AND revenue IS NOT NULL'
+  ).get(userId, sameMonthLastYear(month));
+  const suggestion = lastYear ? lastYear.revenue : null;
+
+  if (!row) return suggestion !== null ? { revenue_last_year_suggestion: suggestion } : null;
+  return { ...row, revenue_last_year_suggestion: suggestion };
 }
 
 function validateNumbers(data) {
@@ -33,6 +59,7 @@ function validateNumbers(data) {
     followers_previous: 'Seguidores (mês anterior)',
     revenue: 'Faturamento (atual)',
     revenue_previous: 'Faturamento (mês anterior)',
+    revenue_last_year: 'Faturamento (mesmo mês do ano anterior)',
   };
   for (const [key, label] of Object.entries(fields)) {
     const value = data[key];
@@ -55,15 +82,28 @@ function validateNumbers(data) {
 async function upsertMonth(userId, month, data) {
   validateMonth(month);
   validateNumbers(data);
-  const { followers_count, followers_previous, revenue, revenue_previous } = data;
+  const { followers_count, followers_previous, revenue, revenue_previous, revenue_last_year } = data;
 
-  const existing = await prepare('SELECT id, validated_by_admin FROM monthly_data WHERE user_id = ? AND month = ?').get(userId, month);
+  const existing = await prepare(
+    'SELECT id, validated_by_admin, yoy_status, revenue_last_year FROM monthly_data WHERE user_id = ? AND month = ?'
+  ).get(userId, month);
 
-  if (existing && existing.validated_by_admin === 1) {
-    const err = new Error('Este mês já foi validado pela mentora e não pode mais ser alterado. Fale com o suporte se precisar corrigir.');
+  const locked = lockMessage(existing);
+  if (locked) {
+    const err = new Error(locked);
     err.status = 409;
     throw err;
   }
+
+  const finalLastYear = revenue_last_year ?? existing?.revenue_last_year ?? null;
+  if (finalLastYear === null || finalLastYear === '') {
+    const err = new Error('Informe o faturamento do mesmo mês do ano anterior (use 0 se não faturou).');
+    err.status = 400;
+    throw err;
+  }
+
+  // Reenvio de mês reaberto: após este envio o mês trava até a validação
+  const nextYoyStatus = existing?.yoy_status ? 'enviado' : null;
 
   if (existing) {
     await prepare(`
@@ -72,6 +112,8 @@ async function upsertMonth(userId, month, data) {
         followers_previous = COALESCE(?, followers_previous),
         revenue = COALESCE(?, revenue),
         revenue_previous = COALESCE(?, revenue_previous),
+        revenue_last_year = COALESCE(?, revenue_last_year),
+        yoy_status = ?,
         validated_by_admin = 0,
         rejection_reason = NULL,
         updated_at = CURRENT_TIMESTAMP
@@ -81,13 +123,15 @@ async function upsertMonth(userId, month, data) {
       followers_previous ?? null,
       revenue ?? null,
       revenue_previous ?? null,
+      revenue_last_year ?? null,
+      nextYoyStatus,
       existing.id
     );
   } else {
     await prepare(`
-      INSERT INTO monthly_data (user_id, month, followers_count, followers_previous, revenue, revenue_previous)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(userId, month, followers_count ?? null, followers_previous ?? null, revenue ?? null, revenue_previous ?? null);
+      INSERT INTO monthly_data (user_id, month, followers_count, followers_previous, revenue, revenue_previous, revenue_last_year)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(userId, month, followers_count ?? null, followers_previous ?? null, revenue ?? null, revenue_previous ?? null, revenue_last_year ?? null);
   }
 
   return prepare('SELECT * FROM monthly_data WHERE user_id = ? AND month = ?').get(userId, month);
@@ -95,9 +139,10 @@ async function upsertMonth(userId, month, data) {
 
 async function updateProof(userId, month, filename) {
   validateMonth(month);
-  const existing = await prepare('SELECT id, validated_by_admin FROM monthly_data WHERE user_id = ? AND month = ?').get(userId, month);
-  if (existing && existing.validated_by_admin === 1) {
-    const err = new Error('Este mês já foi validado pela mentora e não pode mais ser alterado. Fale com o suporte se precisar corrigir.');
+  const existing = await prepare('SELECT id, validated_by_admin, yoy_status FROM monthly_data WHERE user_id = ? AND month = ?').get(userId, month);
+  const locked = lockMessage(existing);
+  if (locked) {
+    const err = new Error(locked);
     err.status = 409;
     throw err;
   }

@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { prepare, executeTransaction } = require('../../config/database');
-const { calculateMonthRanking } = require('../../utils/rankingCalculator');
+const { calculateMonthRanking, getRevenueGrowthPct } = require('../../utils/rankingCalculator');
 const { buildChecklistProgressMap, invalidateRankingCache } = require('../ranking/ranking.service');
 const { getCurrentMonth } = require('../../utils/formatters');
 
@@ -159,6 +159,9 @@ async function deleteChecklistItem(id) {
   return { success: true };
 }
 
+// Mês reaberto para o ano anterior que a mentorada ainda não reenviou: não é validável
+const NOT_AWAITING_MENTORADA = "(md.yoy_status IS NULL OR md.yoy_status != 'solicitado')";
+
 async function listPendingValidations(month, { page = 1, limit = 50 } = {}) {
   // Sem month: retorna pendências de TODOS os meses (mais recentes primeiro).
   const offset = (Math.max(1, page) - 1) * limit;
@@ -169,12 +172,12 @@ async function listPendingValidations(month, { page = 1, limit = 50 } = {}) {
            u.profile_photo
     FROM monthly_data md
     JOIN users u ON u.id = md.user_id AND u.role != 'admin'
-    WHERE md.validated_by_admin = 0 ${monthFilter}
+    WHERE md.validated_by_admin = 0 AND ${NOT_AWAITING_MENTORADA} ${monthFilter}
     ORDER BY md.month DESC, md.created_at DESC
     LIMIT ? OFFSET ?
   `).all(...params, limit, offset);
   const totalRow = await prepare(
-    `SELECT COUNT(*) as cnt FROM monthly_data md JOIN users u ON u.id = md.user_id AND u.role != 'admin' WHERE md.validated_by_admin = 0 ${monthFilter}`
+    `SELECT COUNT(*) as cnt FROM monthly_data md JOIN users u ON u.id = md.user_id AND u.role != 'admin' WHERE md.validated_by_admin = 0 AND ${NOT_AWAITING_MENTORADA} ${monthFilter}`
   ).get(...params);
   return { data: rows, total: totalRow.cnt, page, limit };
 }
@@ -185,7 +188,7 @@ async function getMonthDiagnostic(month) {
   }
   const allData = await prepare(`
     SELECT md.id, md.user_id, md.month, md.followers_count, md.followers_previous,
-           md.revenue, md.revenue_previous, md.validated_by_admin, md.created_at,
+           md.revenue, md.revenue_previous, md.revenue_last_year, md.yoy_status, md.validated_by_admin, md.created_at,
            u.name, u.instagram_handle
     FROM monthly_data md
     JOIN users u ON u.id = md.user_id AND u.role != 'admin'
@@ -219,7 +222,7 @@ async function getMonthlyHistory() {
   // Todos os registros mensais de mentoradas (células da tabela)
   const rows = await prepare(`
     SELECT md.id as monthly_data_id, md.user_id, md.month, md.followers_count, md.followers_previous,
-           md.revenue, md.revenue_previous, md.validated_by_admin,
+           md.revenue, md.revenue_previous, md.revenue_last_year, md.yoy_status, md.validated_by_admin,
            md.instagram_proof_image, md.created_at
     FROM monthly_data md
     JOIN users u ON u.id = md.user_id AND u.role = 'mentorada' AND u.deleted_at IS NULL
@@ -233,9 +236,8 @@ async function getMonthlyHistory() {
   const cells = {};
   for (const r of rows) {
     const followersGained = (r.followers_count || 0) - (r.followers_previous || 0);
-    const revenueGrowthPct = (r.revenue && r.revenue_previous)
-      ? Math.round(((r.revenue - r.revenue_previous) / r.revenue_previous) * 1000) / 10
-      : null;
+    const growth = getRevenueGrowthPct(r);
+    const revenueGrowthPct = growth === null ? null : Math.round(growth * 10) / 10;
     cells[`${r.user_id}|${r.month}`] = {
       monthly_data_id: r.monthly_data_id,
       followers_current: r.followers_count ?? null,
@@ -243,7 +245,10 @@ async function getMonthlyHistory() {
       followers_gained: followersGained,
       revenue_current: r.revenue ?? null,
       revenue_previous: r.revenue_previous ?? null,
+      revenue_last_year: r.revenue_last_year ?? null,
       revenue_growth_pct: revenueGrowthPct,
+      revenue_growth_basis: r.revenue_last_year !== null && r.revenue_last_year !== undefined ? 'ano_anterior' : 'mes_anterior',
+      yoy_status: r.yoy_status ?? null,
       validated: r.validated_by_admin === 1,
       validation_status: r.validated_by_admin, // 0 = pendente | 1 = aprovado | 2 = rejeitado
       proof_url: r.instagram_proof_image ? `/uploads/proofs/${r.instagram_proof_image}` : null,
@@ -270,11 +275,12 @@ async function approveAllPending(month, adminId = null) {
   // Trilha de auditoria em massa antes do UPDATE
   await prepare(`
     INSERT INTO validation_audit (monthly_data_id, user_id, month, previous_status, new_status, previous_reason, new_reason, admin_id)
-    SELECT id, user_id, month, validated_by_admin, 1, rejection_reason, NULL, ?
-    FROM monthly_data WHERE month = ? AND validated_by_admin = 0
+    SELECT md.id, md.user_id, md.month, md.validated_by_admin, 1, md.rejection_reason, NULL, ?
+    FROM monthly_data md WHERE md.month = ? AND md.validated_by_admin = 0 AND ${NOT_AWAITING_MENTORADA}
   `).run(adminId, month);
   const result = await prepare(
-    'UPDATE monthly_data SET validated_by_admin = 1, validated_at = CURRENT_TIMESTAMP, validated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE month = ? AND validated_by_admin = 0'
+    `UPDATE monthly_data SET validated_by_admin = 1, validated_at = CURRENT_TIMESTAMP, validated_by = ?, updated_at = CURRENT_TIMESTAMP
+     WHERE id IN (SELECT md.id FROM monthly_data md WHERE md.month = ? AND md.validated_by_admin = 0 AND ${NOT_AWAITING_MENTORADA})`
   ).run(adminId, month);
   console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'approve_all_monthly', userId: adminId, details: { month, approved: result.changes } }));
   return { approved: result.changes };
@@ -282,10 +288,13 @@ async function approveAllPending(month, adminId = null) {
 
 async function setValidation(id, approved, { reason = null, adminId = null } = {}) {
   const existing = await prepare(
-    'SELECT id, user_id, month, validated_by_admin, rejection_reason FROM monthly_data WHERE id = ?'
+    'SELECT id, user_id, month, validated_by_admin, rejection_reason, yoy_status FROM monthly_data WHERE id = ?'
   ).get(id);
   if (!existing) {
     const err = new Error('Registro não encontrado.'); err.status = 404; throw err;
+  }
+  if (approved && existing.yoy_status === 'solicitado') {
+    const err = new Error('A mentorada ainda não informou o faturamento do ano anterior deste mês.'); err.status = 409; throw err;
   }
   // 0 = pendente | 1 = aprovado | 2 = rejeitado
   const validated = approved ? 1 : 2;
@@ -421,6 +430,95 @@ async function calculateAndSaveRanking(month) {
   } finally {
     rankingLocks.delete(month);
   }
+}
+
+/**
+ * Reabre todos os meses enviados que ainda não têm o faturamento do ano anterior.
+ * - Aprovados voltam a pendente (auditado) e saem do ranking até a reaprovação.
+ * - Nota de checklist do ranking atual é congelada no registro.
+ * - Rejeitados/pendentes seguem editáveis e ficam marcados como 'solicitado'.
+ */
+async function reopenForLastYearRevenue(adminId = null) {
+  const targets = await prepare(`
+    SELECT md.id, md.user_id, md.month, md.validated_by_admin
+    FROM monthly_data md
+    JOIN users u ON u.id = md.user_id AND u.role = 'mentorada' AND u.deleted_at IS NULL
+    WHERE md.yoy_status IS NULL AND md.revenue_last_year IS NULL
+  `).all();
+
+  if (targets.length === 0) return { reopened: 0, months: [] };
+
+  const ids = targets.map(t => t.id);
+  const ph = ids.map(() => '?').join(',');
+  const reason = 'Reaberto para informar o faturamento do ano anterior';
+  const approved = targets.filter(t => t.validated_by_admin === 1);
+  const months = [...new Set(targets.map(t => t.month))].sort();
+
+  await executeTransaction([
+    // Congela a nota de checklist que o mês já tinha no ranking
+    { sql: `UPDATE monthly_data SET checklist_score_frozen = (
+              SELECT rs.checklist_score FROM ranking_snapshots rs
+              WHERE rs.user_id = monthly_data.user_id AND rs.month = monthly_data.month)
+            WHERE id IN (${ph}) AND checklist_score_frozen IS NULL`, args: ids },
+    // Auditoria aprovado → pendente
+    ...approved.map(t => ({
+      sql: `INSERT INTO validation_audit (monthly_data_id, user_id, month, previous_status, new_status, previous_reason, new_reason, admin_id)
+            VALUES (?, ?, ?, 1, 0, NULL, ?, ?)`,
+      args: [t.id, t.user_id, t.month, reason, adminId],
+    })),
+    // Arquiva e remove o snapshot de ranking de quem foi reaberto
+    { sql: `INSERT INTO ranking_snapshots_history (user_id, month, checklist_score, revenue_score, followers_score, total_score, position)
+            SELECT rs.user_id, rs.month, rs.checklist_score, rs.revenue_score, rs.followers_score, rs.total_score, rs.position
+            FROM ranking_snapshots rs JOIN monthly_data md ON md.user_id = rs.user_id AND md.month = rs.month
+            WHERE md.id IN (${ph})`, args: ids },
+    { sql: `DELETE FROM ranking_snapshots WHERE EXISTS (
+              SELECT 1 FROM monthly_data md WHERE md.user_id = ranking_snapshots.user_id
+              AND md.month = ranking_snapshots.month AND md.id IN (${ph}))`, args: ids },
+    { sql: `UPDATE monthly_data SET
+              yoy_status = 'solicitado',
+              validated_by_admin = CASE WHEN validated_by_admin = 1 THEN 0 ELSE validated_by_admin END,
+              validated_at = CASE WHEN validated_by_admin = 1 THEN NULL ELSE validated_at END,
+              validated_by = CASE WHEN validated_by_admin = 1 THEN NULL ELSE validated_by END,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id IN (${ph})`, args: ids },
+  ]);
+
+  // Reposiciona quem continua no ranking de cada mês afetado
+  for (const month of months) {
+    invalidateRankingCache(month);
+    try {
+      await calculateAndSaveRanking(month);
+    } catch (e) {
+      console.error('[reopen] ranking recalc failed:', month, e.message);
+    }
+  }
+
+  console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'reopen_last_year_revenue', userId: adminId, details: { reopened: targets.length, approved_reverted: approved.length, months } }));
+  return { reopened: targets.length, approved_reverted: approved.length, months };
+}
+
+/** Recalcula o ranking de todos os meses com dados. */
+async function recalculateAllRankings() {
+  const rows = await prepare('SELECT DISTINCT month FROM monthly_data ORDER BY month ASC').all();
+  const results = [];
+  for (const { month } of rows) {
+    // Mês sem nenhum aprovado: limpa snapshots remanescentes (arquivando antes)
+    const validated = await prepare('SELECT COUNT(*) as cnt FROM monthly_data WHERE month = ? AND validated_by_admin = 1').get(month);
+    if (validated.cnt === 0) {
+      await executeTransaction([
+        { sql: `INSERT INTO ranking_snapshots_history (user_id, month, checklist_score, revenue_score, followers_score, total_score, position)
+                SELECT user_id, month, checklist_score, revenue_score, followers_score, total_score, position
+                FROM ranking_snapshots WHERE month = ?`, args: [month] },
+        { sql: 'DELETE FROM ranking_snapshots WHERE month = ?', args: [month] },
+      ]);
+      invalidateRankingCache(month);
+      results.push({ month, count: 0 });
+      continue;
+    }
+    const r = await calculateAndSaveRanking(month);
+    results.push({ month, count: r.count });
+  }
+  return { months: results };
 }
 
 async function exportCSV() {
@@ -566,7 +664,7 @@ module.exports = {
   listChecklistItems, addChecklistItem, updateChecklistItem, deleteChecklistItem,
   listPendingValidations, setValidation, approveAllPending, unapproveValidation,
   listAllPrizes, updatePrize,
-  calculateAndSaveRanking,
+  calculateAndSaveRanking, reopenForLastYearRevenue, recalculateAllRankings,
   exportCSV,
   getSettings, updateSettings,
   getMonthDiagnostic, getMonthlyHistory,

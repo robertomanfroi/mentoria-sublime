@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { ExternalLink, CheckCircle2, XCircle, Clock, TrendingUp, TrendingDown, Minus, Undo2 } from 'lucide-react'
+import { ExternalLink, CheckCircle2, XCircle, Clock, TrendingUp, TrendingDown, Minus, Undo2, CalendarClock, RefreshCw } from 'lucide-react'
 import { useApi } from '../../hooks/useApi'
 import { adminApi } from '../../lib/api'
 import { getMonthLabel, formatNumber, formatCurrency } from '../../lib/utils'
@@ -51,15 +51,27 @@ function MonthCell({ cell, onUnapprove, unapproving }) {
             {cell.revenue_current !== null ? formatCurrency(cell.revenue_current) : '—'}
           </span>
         </div>
+        {cell.revenue_last_year !== null && (
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[10px] text-dark/40 font-body">Ano anterior</span>
+            <span className="text-xs text-dark/60 font-body">{formatCurrency(cell.revenue_last_year)}</span>
+          </div>
+        )}
         {cell.revenue_growth_pct !== null && (
           <div className="flex justify-end">
-            <GrowthBadge value={cell.revenue_growth_pct} suffix="%" />
+            <span title={cell.revenue_growth_basis === 'ano_anterior' ? 'vs mesmo mês do ano anterior' : 'vs mês anterior'}>
+              <GrowthBadge value={cell.revenue_growth_pct} suffix={cell.revenue_growth_basis === 'ano_anterior' ? '% a/a' : '% m/m'} />
+            </span>
           </div>
         )}
 
         {/* Status + comprovante */}
         <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-beige/50">
-          {cell.validated ? (
+          {cell.yoy_status === 'solicitado' && !cell.validated && cell.validation_status !== 2 ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-dark/50">
+              <CalendarClock size={12} strokeWidth={2} /> Aguardando mentorada
+            </span>
+          ) : cell.validated ? (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
               <CheckCircle2 size={12} strokeWidth={2} /> Validado
             </span>
@@ -108,6 +120,41 @@ export default function MonthlyHistoryPage() {
   const fetchHistory = useCallback(() => adminApi.getMonthlyHistory(), [])
   const { data, loading, error, refetch } = useApi(fetchHistory)
   const [unapprovingId, setUnapprovingId] = useState(null)
+  const [busy, setBusy] = useState(null) // 'reopen' | 'recalc'
+  const [notice, setNotice] = useState('')
+
+  async function handleReopen() {
+    if (!window.confirm('Reabrir todos os meses já enviados para as mentoradas informarem o faturamento do mesmo mês do ano anterior?\n\nMeses aprovados voltam para pendente e saem do ranking até você aprovar o reenvio.')) return
+    setBusy('reopen')
+    setNotice('')
+    try {
+      const res = await adminApi.reopenLastYearRevenue()
+      const { reopened = 0, approved_reverted = 0 } = res.data || {}
+      setNotice(reopened === 0
+        ? 'Nenhum mês para reabrir — todos já têm o faturamento do ano anterior.'
+        : `✓ ${reopened} mês(es) reabertos (${approved_reverted} estavam aprovados). As mentoradas já podem completar.`)
+      refetch()
+    } catch (err) {
+      setNotice('Erro: ' + (err.response?.data?.error || err.message))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleRecalcAll() {
+    if (!window.confirm('Reprocessar o ranking de todos os meses com a regra atual? O ranking anterior fica guardado no histórico.')) return
+    setBusy('recalc')
+    setNotice('')
+    try {
+      const res = await adminApi.recalculateAllRankings()
+      const months = res.data?.months || []
+      setNotice(`✓ Ranking reprocessado em ${months.length} mês(es).`)
+    } catch (err) {
+      setNotice('Erro: ' + (err.response?.data?.error || err.message))
+    } finally {
+      setBusy(null)
+    }
+  }
 
   async function handleUnapprove(monthlyDataId) {
     if (!window.confirm('Desaprovar este registro? A mentorada poderá preencher os dados novamente e o ranking será recalculado.')) return
@@ -137,11 +184,36 @@ export default function MonthlyHistoryPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="font-display text-xl font-semibold text-dark">Histórico Mensal</h1>
-        <p className="text-sm text-dark/50 font-body mt-0.5">
-          Dados de todas as mentoradas mês a mês — seguidores, faturamento e validação.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-xl font-semibold text-dark">Histórico Mensal</h1>
+          <p className="text-sm text-dark/50 font-body mt-0.5">
+            Dados de todas as mentoradas mês a mês — seguidores, faturamento e validação.
+          </p>
+        </div>
+        <div className="flex flex-col items-start sm:items-end gap-1.5">
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={handleReopen}
+              disabled={!!busy}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-beige bg-white px-3 py-2 text-xs font-medium text-dark font-body hover:border-gold disabled:opacity-50"
+            >
+              <CalendarClock size={14} />
+              {busy === 'reopen' ? 'Reabrindo...' : 'Pedir faturamento do ano anterior'}
+            </button>
+            <button
+              onClick={handleRecalcAll}
+              disabled={!!busy}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-beige bg-white px-3 py-2 text-xs font-medium text-dark font-body hover:border-gold disabled:opacity-50"
+            >
+              <RefreshCw size={14} />
+              {busy === 'recalc' ? 'Reprocessando...' : 'Reprocessar ranking'}
+            </button>
+          </div>
+          {notice && (
+            <p className={`text-xs font-body ${notice.startsWith('✓') ? 'text-emerald-600' : 'text-amber-600'}`}>{notice}</p>
+          )}
+        </div>
       </div>
 
       {months.length === 0 || rows.length === 0 ? (
