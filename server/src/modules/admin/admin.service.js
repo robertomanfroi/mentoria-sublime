@@ -495,6 +495,55 @@ async function reopenForLastYearRevenue(adminId = null) {
   return { reopened: targets.length, months };
 }
 
+/**
+ * Reabre para correção todos os meses já aprovados das mentoradas ativas.
+ * Nada é apagado: validated_by_admin continua 1, então o mês segue no ranking com a nota
+ * atual até a mentora aprovar a correção. A nota de checklist é congelada antes.
+ */
+async function reopenAllForCorrection(adminId = null) {
+  const targets = await prepare(`
+    SELECT md.id, md.month
+    FROM monthly_data md
+    JOIN users u ON u.id = md.user_id AND u.role = 'mentorada' AND u.deleted_at IS NULL
+    WHERE md.validated_by_admin = 1 AND md.month >= ?
+  `).all(FIRST_MONTH);
+
+  if (targets.length === 0) return { reopened: 0, months: [] };
+
+  const ids = targets.map(t => t.id);
+  const ph = ids.map(() => '?').join(',');
+  const months = [...new Set(targets.map(t => t.month))].sort();
+
+  await executeTransaction([
+    // Cópia de segurança do que já estava aprovado antes de abrir para edição
+    { sql: `INSERT INTO monthly_data_history (monthly_data_id, user_id, month, followers_count, followers_previous,
+              revenue, revenue_previous, revenue_last_year, instagram_proof_image, validated_by_admin,
+              rejection_reason, yoy_status, reason)
+            SELECT id, user_id, month, followers_count, followers_previous,
+              revenue, revenue_previous, revenue_last_year, instagram_proof_image, validated_by_admin,
+              rejection_reason, yoy_status, 'backup_antes_reabertura_geral'
+            FROM monthly_data WHERE id IN (${ph})`, args: ids },
+    // Congela a nota de checklist que o mês já tinha no ranking
+    { sql: `UPDATE monthly_data SET checklist_score_frozen = (
+              SELECT rs.checklist_score FROM ranking_snapshots rs
+              WHERE rs.user_id = monthly_data.user_id AND rs.month = monthly_data.month)
+            WHERE id IN (${ph}) AND checklist_score_frozen IS NULL`, args: ids },
+    { sql: `UPDATE monthly_data SET yoy_status = 'solicitado', updated_at = CURRENT_TIMESTAMP WHERE id IN (${ph})`, args: ids },
+  ]);
+
+  console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'reopen_all_for_correction', userId: adminId, details: { reopened: targets.length, months } }));
+  return { reopened: targets.length, months };
+}
+
+/** Reabertura geral automática, uma única vez por banco (marcada em app_settings). */
+async function reopenAllForCorrectionOnce() {
+  const done = await prepare("SELECT value FROM app_settings WHERE key = 'general_reopen_done'").get();
+  if (done) return null;
+  const result = await reopenAllForCorrection(null);
+  await prepare("INSERT INTO app_settings (key, value) VALUES ('general_reopen_done', ?)").run(new Date().toISOString());
+  return result;
+}
+
 /** Reabertura automática, uma única vez por banco (marcada em app_settings). */
 async function reopenForLastYearRevenueOnce() {
   const done = await prepare("SELECT value FROM app_settings WHERE key = 'yoy_reopen_done'").get();
@@ -673,7 +722,8 @@ module.exports = {
   listChecklistItems, addChecklistItem, updateChecklistItem, deleteChecklistItem,
   listPendingValidations, setValidation, approveAllPending, unapproveValidation,
   listAllPrizes, updatePrize,
-  calculateAndSaveRanking, reopenForLastYearRevenue, reopenForLastYearRevenueOnce, recalculateAllRankings,
+  calculateAndSaveRanking, reopenForLastYearRevenue, reopenForLastYearRevenueOnce,
+  reopenAllForCorrection, reopenAllForCorrectionOnce, recalculateAllRankings,
   exportCSV,
   getSettings, updateSettings,
   getMonthDiagnostic, getMonthlyHistory,

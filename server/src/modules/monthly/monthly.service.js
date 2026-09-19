@@ -30,22 +30,19 @@ async function archiveVersion(id, reason) {
   await prepare(ARCHIVE_SQL).run(reason, id);
 }
 
-const LOCKED_AFTER_RESEND_MSG = 'Você já reenviou este mês com o faturamento do ano anterior. Aguarde a validação da mentora.';
-
 // Mesmo mês do ano anterior: "2026-09" → "2025-09"
 function sameMonthLastYear(month) {
   const [y, m] = month.split('-');
   return `${Number(y) - 1}-${m}`;
 }
 
-// Travado quando aprovado, ou quando já reenviado após a reabertura do ano anterior
+// Trava só na aprovação: enquanto a mentora não validar, a mentorada corrige quantas vezes precisar
 function lockMessage(row) {
   if (!row) return null;
-  if (row.yoy_status === 'solicitado') return null; // reaberto: pode editar tudo
+  if (row.yoy_status === 'solicitado') return null; // reaberto para correção
   if (row.validated_by_admin === 1) {
     return 'Este mês já foi validado pela mentora e não pode mais ser alterado. Fale com o suporte se precisar corrigir.';
   }
-  if (row.validated_by_admin === 0 && row.yoy_status === 'enviado') return LOCKED_AFTER_RESEND_MSG;
   return null;
 }
 
@@ -125,7 +122,7 @@ async function upsertMonth(userId, month, data) {
     throw err;
   }
 
-  // Reenvio de mês reaberto: após este envio o mês trava até a validação
+  // Mês reaberto passa a 'enviado': volta para a fila da mentora, mas segue editável até a aprovação
   const nextYoyStatus = existing?.yoy_status ? 'enviado' : null;
 
   if (existing) {

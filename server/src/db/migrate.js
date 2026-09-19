@@ -123,6 +123,13 @@ async function reopenLastYearRevenueOnce() {
   if (result) console.log(`[migrate] Meses reabertos para o faturamento do ano anterior: ${result.reopened}`);
 }
 
+// Abre uma única vez todos os meses já aprovados para as mentoradas corrigirem os dados
+async function reopenAllForCorrectionOnce() {
+  const { reopenAllForCorrectionOnce: run } = require('../modules/admin/admin.service');
+  const result = await run();
+  if (result) console.log(`[migrate] Meses reabertos para correção: ${result.reopened}`);
+}
+
 async function migrate() {
   await runMigrations();
   await normalizeInstagramHandles();
@@ -131,6 +138,7 @@ async function migrate() {
   await seedAdminUser();
   await seedSampleMentoradas();
   await reopenLastYearRevenueOnce();
+  await reopenAllForCorrectionOnce();
   console.log('[migrate] Setup completo.');
 }
 

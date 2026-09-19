@@ -164,14 +164,8 @@ export default function MonthlyPage() {
         fd.append('proof', printFile)
         await monthlyApi.uploadProof(selectedMonth, fd)
       }
-      // Mês reaberto trava após o reenvio dos dados: o print vai antes
-      if (reopened) {
-        await sendProof()
-        await monthlyApi.submit(selectedMonth, payload)
-      } else {
-        await monthlyApi.submit(selectedMonth, payload)
-        await sendProof()
-      }
+      await monthlyApi.submit(selectedMonth, payload)
+      await sendProof()
       setSuccess(true)
       refetch()
     } catch (err) {
@@ -188,7 +182,8 @@ export default function MonthlyPage() {
   const statusInfo = statusConfig[status] || null
   const reopened   = submission?.yoy_status === 'solicitado'
   const resent     = status === 'pending' && submission?.yoy_status === 'enviado'
-  const locked     = (status === 'approved' && !reopened) || resent
+  const openForCorrection = reopened || resent
+  const locked     = status === 'approved' && !reopened
   const [selYear, selMonthNum] = selectedMonth.split('-')
   const lastYearLabel = `${formatMonth(`${Number(selYear) - 1}-${selMonthNum}`)}`
   const capitalize = txt => (txt ? txt.charAt(0).toUpperCase() + txt.slice(1) : txt)
@@ -254,20 +249,21 @@ export default function MonthlyPage() {
         </div>
       )}
 
-      {/* ── Pedido de faturamento do ano anterior ─────────────── */}
-      {reopened && (
+      {/* ── Mês aberto para correção ──────────────────────────── */}
+      {openForCorrection && (
         <div
           className="p-4 rounded-xl animate-fade-in-up"
           style={{ background: 'rgba(199,170,137,0.10)', border: `1px solid ${GOLD}` }}
         >
           <p className="text-sm font-body font-semibold" style={{ color: BROWN }}>
-            A mentora pediu uma informação a mais neste mês
+            Este mês está aberto para correção
           </p>
           <p className="text-sm font-body mt-1" style={{ color: DARK }}>
-            Informe também quanto você faturou em <strong>{lastYearLabel}</strong> — é com esse mês que o seu resultado de agora passa a ser comparado.
+            Revise os dados e corrija o que precisar
+            {submission?.revenue_last_year == null && <>, inclusive o faturamento de <strong>{lastYearLabel}</strong></>}.
           </p>
           <p className="text-xs font-body mt-2" style={{ color: `${DARK}80` }}>
-            Você pode revisar todos os dados deste mês. Depois do envio ele não poderá mais ser editado; a nota no ranking muda quando a mentora aprovar.
+            Pode salvar quantas vezes quiser. Quando a mentora aprovar, o mês trava e a nota no ranking é atualizada.
           </p>
         </div>
       )}
