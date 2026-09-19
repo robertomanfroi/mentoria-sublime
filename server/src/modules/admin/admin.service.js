@@ -471,6 +471,14 @@ async function reopenForLastYearRevenue(adminId = null) {
   const months = [...new Set(targets.map(t => t.month))].sort();
 
   await executeTransaction([
+    // Cópia de segurança de tudo que foi preenchido antes de abrir para edição
+    { sql: `INSERT INTO monthly_data_history (monthly_data_id, user_id, month, followers_count, followers_previous,
+              revenue, revenue_previous, revenue_last_year, instagram_proof_image, validated_by_admin,
+              rejection_reason, yoy_status, reason)
+            SELECT id, user_id, month, followers_count, followers_previous,
+              revenue, revenue_previous, revenue_last_year, instagram_proof_image, validated_by_admin,
+              rejection_reason, yoy_status, 'backup_antes_reabertura'
+            FROM monthly_data WHERE id IN (${ph})`, args: ids },
     // Congela a nota de checklist que o mês já tinha no ranking
     { sql: `UPDATE monthly_data SET checklist_score_frozen = (
               SELECT rs.checklist_score FROM ranking_snapshots rs

@@ -8,6 +8,20 @@ function validateMonth(month) {
   }
 }
 
+// Guarda a versão atual do registro antes de qualquer alteração
+const ARCHIVE_SQL = `
+  INSERT INTO monthly_data_history (monthly_data_id, user_id, month, followers_count, followers_previous,
+    revenue, revenue_previous, revenue_last_year, instagram_proof_image, validated_by_admin,
+    rejection_reason, yoy_status, reason)
+  SELECT id, user_id, month, followers_count, followers_previous,
+    revenue, revenue_previous, revenue_last_year, instagram_proof_image, validated_by_admin,
+    rejection_reason, yoy_status, ?
+  FROM monthly_data WHERE id = ?`;
+
+async function archiveVersion(id, reason) {
+  await prepare(ARCHIVE_SQL).run(reason, id);
+}
+
 const LOCKED_AFTER_RESEND_MSG = 'Você já reenviou este mês com o faturamento do ano anterior. Aguarde a validação da mentora.';
 
 // Mesmo mês do ano anterior: "2026-09" → "2025-09"
@@ -107,6 +121,7 @@ async function upsertMonth(userId, month, data) {
   const nextYoyStatus = existing?.yoy_status ? 'enviado' : null;
 
   if (existing) {
+    await archiveVersion(existing.id, 'edicao_dados');
     await prepare(`
       UPDATE monthly_data SET
         followers_count = COALESCE(?, followers_count),
@@ -149,6 +164,8 @@ async function updateProof(userId, month, filename) {
   }
   if (!existing) {
     await prepare('INSERT INTO monthly_data (user_id, month) VALUES (?, ?)').run(userId, month);
+  } else {
+    await archiveVersion(existing.id, 'troca_print');
   }
   await prepare(
     'UPDATE monthly_data SET instagram_proof_image = ?, validated_by_admin = 0, rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND month = ?'
