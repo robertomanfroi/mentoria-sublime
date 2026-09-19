@@ -70,7 +70,6 @@ export default function MonthlyPage() {
   const [followersCurrentStr, setFollowersCurrent]   = useState('')
   const [followersPreviousStr, setFollowersPrevious] = useState('')
   const [revenueCurrentStr, setRevenueCurrent]       = useState('')
-  const [revenuePreviousStr, setRevenuePrevious]     = useState('')
   const [revenueLastYearStr, setRevenueLastYear]     = useState('')
   const [printFile, setPrintFile]               = useState(null)
   const [printPreview, setPrintPreview]         = useState('')
@@ -90,7 +89,6 @@ export default function MonthlyPage() {
       setFollowersCurrent(String(monthData.followers_count || ''))
       setFollowersPrevious(String(monthData.followers_previous || ''))
       setRevenueCurrent(String(monthData.revenue || ''))
-      setRevenuePrevious(String(monthData.revenue_previous || ''))
       // Valor já informado; senão, sugere o faturamento que ela registrou no mesmo mês do ano anterior
       const lastYear = monthData.revenue_last_year ?? monthData.revenue_last_year_suggestion
       setRevenueLastYear(lastYear === null || lastYear === undefined ? '' : String(lastYear))
@@ -98,7 +96,6 @@ export default function MonthlyPage() {
       setFollowersCurrent('')
       setFollowersPrevious('')
       setRevenueCurrent('')
-      setRevenuePrevious('')
       setRevenueLastYear('')
     }
   }, [monthData])
@@ -144,7 +141,6 @@ export default function MonthlyPage() {
     const numFields = [
       [followersPreviousStr, 'Seguidores (mês anterior)'],
       [revenueCurrentStr, 'Faturamento (atual)'],
-      [revenuePreviousStr, 'Faturamento (mês anterior)'],
     ]
     for (const [str, label] of numFields) {
       if (str.trim() && (!Number.isFinite(Number(str)) || Number(str) < 0)) {
@@ -160,7 +156,6 @@ export default function MonthlyPage() {
         followers_count:    followersCurrent,
         followers_previous: followersPreviousStr.trim() ? Number(followersPreviousStr) : null,
         revenue:            revenueCurrentStr.trim() ? Number(revenueCurrentStr) : null,
-        revenue_previous:   revenuePreviousStr.trim() ? Number(revenuePreviousStr) : null,
         revenue_last_year:  lastYearNum,
       }
       async function sendProof() {
@@ -322,30 +317,15 @@ export default function MonthlyPage() {
               subtitle="Seus dados de faturamento são confidenciais e nunca aparecem para outras mentoradas."
               badge={<Badge variant="default">🔒 Privado</Badge>}
             >
-              <div className="mb-4">
+              <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label={`Faturamento em ${lastYearLabel} (mesmo mês do ano anterior) *`}
+                  label={`Faturamento em ${lastYearLabel} (mesmo mês do ano anterior)`}
                   type="number"
                   value={revenueLastYearStr}
                   onChange={e => setRevenueLastYear(e.target.value)}
                   min={0}
                   step="0.01"
                   required
-                />
-                {submission?.revenue_last_year == null && submission?.revenue_last_year_suggestion != null && (
-                  <p className="text-xs font-body mt-1" style={{ color: `${MID}90` }}>
-                    Preenchido com o valor que você informou em {lastYearLabel}. Pode corrigir se precisar.
-                  </p>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Faturamento (mês anterior)"
-                  type="number"
-                  value={revenuePreviousStr}
-                  onChange={e => setRevenuePrevious(e.target.value)}
-                  min={0}
-                  step="0.01"
                 />
                 <Input
                   label="Faturamento (atual)"
@@ -356,6 +336,14 @@ export default function MonthlyPage() {
                   step="0.01"
                 />
               </div>
+              {submission?.revenue_last_year == null && submission?.revenue_last_year_suggestion != null && (
+                <p className="text-xs font-body mt-2" style={{ color: `${MID}90` }}>
+                  Preenchemos com o valor que você informou em {lastYearLabel}. Pode corrigir se precisar.
+                </p>
+              )}
+              <p className="text-xs font-body mt-2" style={{ color: `${MID}90` }}>
+                O ranking compara o seu faturamento com o mesmo mês do ano anterior.
+              </p>
             </SectionCard>
           </div>
 
