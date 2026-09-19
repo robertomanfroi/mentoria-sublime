@@ -191,6 +191,9 @@ export default function MonthlyPage() {
   const locked     = (status === 'approved' && !reopened) || resent
   const [selYear, selMonthNum] = selectedMonth.split('-')
   const lastYearLabel = `${formatMonth(`${Number(selYear) - 1}-${selMonthNum}`)}`
+  const capitalize = txt => (txt ? txt.charAt(0).toUpperCase() + txt.slice(1) : txt)
+  const lastYearTitle = capitalize(lastYearLabel)
+  const currentMonthTitle = capitalize(formatMonth(selectedMonth))
 
   return (
     <div
@@ -261,7 +264,7 @@ export default function MonthlyPage() {
             A mentora pediu uma informação a mais neste mês
           </p>
           <p className="text-sm font-body mt-1" style={{ color: DARK }}>
-            Informe quanto você faturou em <strong>{lastYearLabel}</strong>. O ranking agora compara o seu faturamento com o mesmo mês do ano anterior.
+            Informe também quanto você faturou em <strong>{lastYearLabel}</strong> — é com esse mês que o seu resultado de agora passa a ser comparado.
           </p>
           <p className="text-xs font-body mt-2" style={{ color: `${DARK}80` }}>
             Você pode revisar todos os dados deste mês. Depois do envio ele não poderá mais ser editado; a nota no ranking muda quando a mentora aprovar.
@@ -314,36 +317,43 @@ export default function MonthlyPage() {
           <div className="animate-fade-in-up-delay-2">
             <SectionCard
               title="Faturamento"
-              subtitle="Seus dados de faturamento são confidenciais e nunca aparecem para outras mentoradas."
+              subtitle="Confidencial — nunca aparece para outras mentoradas. O ranking compara o mesmo mês, um ano depois."
               badge={<Badge variant="default">🔒 Privado</Badge>}
             >
               <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label={`Faturamento em ${lastYearLabel} (mesmo mês do ano anterior)`}
-                  type="number"
-                  value={revenueLastYearStr}
-                  onChange={e => setRevenueLastYear(e.target.value)}
-                  min={0}
-                  step="0.01"
-                  required
-                />
-                <Input
-                  label="Faturamento (atual)"
-                  type="number"
-                  value={revenueCurrentStr}
-                  onChange={e => setRevenueCurrent(e.target.value)}
-                  min={0}
-                  step="0.01"
-                />
+                <div>
+                  <Input
+                    label={lastYearTitle}
+                    type="number"
+                    value={revenueLastYearStr}
+                    onChange={e => setRevenueLastYear(e.target.value)}
+                    min={0}
+                    step="0.01"
+                    required
+                  />
+                  <p className="text-xs font-body mt-1.5" style={{ color: `${MID}90` }}>
+                    ano passado
+                  </p>
+                </div>
+                <div>
+                  <Input
+                    label={currentMonthTitle}
+                    type="number"
+                    value={revenueCurrentStr}
+                    onChange={e => setRevenueCurrent(e.target.value)}
+                    min={0}
+                    step="0.01"
+                  />
+                  <p className="text-xs font-body mt-1.5" style={{ color: `${MID}90` }}>
+                    este mês
+                  </p>
+                </div>
               </div>
               {submission?.revenue_last_year == null && submission?.revenue_last_year_suggestion != null && (
                 <p className="text-xs font-body mt-2" style={{ color: `${MID}90` }}>
                   Preenchemos com o valor que você informou em {lastYearLabel}. Pode corrigir se precisar.
                 </p>
               )}
-              <p className="text-xs font-body mt-2" style={{ color: `${MID}90` }}>
-                O ranking compara o seu faturamento com o mesmo mês do ano anterior.
-              </p>
             </SectionCard>
           </div>
 
