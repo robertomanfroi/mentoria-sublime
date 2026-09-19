@@ -447,9 +447,7 @@ export default function MonthlyPage() {
             >
               <CheckCircle size={16} style={{ color: '#3a8040', flexShrink: 0 }} />
               <p className="text-sm font-body" style={{ color: '#3a8040' }}>
-                {resent
-                  ? 'Dados reenviados. Aguardando a validação da mentora — este mês não pode mais ser alterado.'
-                  : 'Este mês já foi validado pela mentora e não pode mais ser alterado.'}
+                Este mês já foi validado pela mentora e não pode mais ser alterado.
               </p>
             </div>
           ) : (
@@ -531,9 +529,11 @@ export default function MonthlyPage() {
                   const mStatus = m.validated_by_admin === 1 ? 'approved'
                                 : m.validated_by_admin === 2 ? 'rejected'
                                 : 'pending'
-                  const s = m.yoy_status === 'solicitado'
-                    ? { variant: 'warning', label: 'Completar ano anterior' }
-                    : statusConfig[mStatus]
+                  const s = m.yoy_status !== 'solicitado'
+                    ? statusConfig[mStatus]
+                    : m.revenue_last_year == null
+                      ? { variant: 'warning', label: 'Completar ano anterior' }
+                      : { variant: 'warning', label: 'Aberto para correção' }
                   return (
                     <tr key={m.month} style={{ borderBottom: `1px solid rgba(216,209,193,0.2)` }}>
                       <td className="py-2.5 font-medium" style={{ color: DARK }}>{formatMonth(m.month)}</td>

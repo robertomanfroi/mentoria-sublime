@@ -48,7 +48,7 @@ function lockMessage(row) {
 
 async function getHistory(userId) {
   return prepare(
-    `SELECT id, user_id, month, followers_count, followers_previous,
+    `SELECT id, user_id, month, followers_count, followers_previous, revenue_last_year,
        instagram_proof_image, yoy_status, validated_by_admin, rejection_reason, created_at, updated_at
      FROM monthly_data WHERE user_id = ? ORDER BY month DESC`
   ).all(userId);
@@ -172,9 +172,11 @@ async function updateProof(userId, month, filename) {
   } else {
     await archiveVersion(existing.id, 'troca_print');
   }
+  // Mesmo tratamento do envio de dados: mês reaberto volta para a fila da mentora
+  const nextYoyStatus = existing?.yoy_status ? 'enviado' : null;
   await prepare(
-    'UPDATE monthly_data SET instagram_proof_image = ?, validated_by_admin = 0, rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND month = ?'
-  ).run(filename, userId, month);
+    'UPDATE monthly_data SET instagram_proof_image = ?, yoy_status = ?, validated_by_admin = 0, rejection_reason = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND month = ?'
+  ).run(filename, nextYoyStatus, userId, month);
 
   return prepare(
     `SELECT id, user_id, month, followers_count, followers_previous,

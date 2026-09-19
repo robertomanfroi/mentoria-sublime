@@ -95,7 +95,8 @@ function MonthCell({ cell, onUnapprove, unapproving }) {
 
         {cell.yoy_status === 'solicitado' && (
           <div className="inline-flex items-center gap-1 text-[11px] font-medium text-dark/50">
-            <CalendarClock size={12} strokeWidth={2} /> Falta o ano anterior
+            <CalendarClock size={12} strokeWidth={2} />
+            {cell.revenue_last_year == null ? 'Falta o ano anterior' : 'Aberto para correção'}
           </div>
         )}
 
