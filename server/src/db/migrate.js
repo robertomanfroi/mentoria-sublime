@@ -116,6 +116,13 @@ async function normalizeInstagramHandles() {
   await prepare("UPDATE users SET instagram_handle = SUBSTR(instagram_handle, 2) WHERE instagram_handle LIKE '@%'").run();
 }
 
+// Story 2.1: abre uma única vez os meses já enviados para informar o faturamento do ano anterior
+async function reopenLastYearRevenueOnce() {
+  const { reopenForLastYearRevenueOnce } = require('../modules/admin/admin.service');
+  const result = await reopenForLastYearRevenueOnce();
+  if (result) console.log(`[migrate] Meses reabertos para o faturamento do ano anterior: ${result.reopened}`);
+}
+
 async function migrate() {
   await runMigrations();
   await normalizeInstagramHandles();
@@ -123,6 +130,7 @@ async function migrate() {
   await seedPrizes();
   await seedAdminUser();
   await seedSampleMentoradas();
+  await reopenLastYearRevenueOnce();
   console.log('[migrate] Setup completo.');
 }
 

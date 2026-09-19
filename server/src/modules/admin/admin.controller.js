@@ -141,12 +141,6 @@ async function recalculateAllRankings(req, res, next) {
   try { res.json(await adminService.recalculateAllRankings()); } catch (err) { next(err); }
 }
 
-// ─── FATURAMENTO DO ANO ANTERIOR ──────────────────────────────────────────────
-
-async function reopenForLastYearRevenue(req, res, next) {
-  try { res.json(await adminService.reopenForLastYearRevenue(req.user?.id ?? null)); } catch (err) { next(err); }
-}
-
 // ─── EXPORT ───────────────────────────────────────────────────────────────────
 
 async function exportCSV(req, res, next) {
@@ -192,6 +186,6 @@ module.exports = {
   calculateRanking,
   exportCSV,
   getSettings, updateSettings,
-  getMonthDiagnostic, getMonthlyHistory, recalculateAllRankings, reopenForLastYearRevenue,
+  getMonthDiagnostic, getMonthlyHistory, recalculateAllRankings,
   resetUserPassword, listPasswordResetRequests, resendPasswordResetLink,
 };

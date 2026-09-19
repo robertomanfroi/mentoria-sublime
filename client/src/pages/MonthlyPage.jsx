@@ -192,7 +192,7 @@ export default function MonthlyPage() {
   const statusInfo = statusConfig[status] || null
   const reopened   = submission?.yoy_status === 'solicitado'
   const resent     = status === 'pending' && submission?.yoy_status === 'enviado'
-  const locked     = status === 'approved' || resent
+  const locked     = (status === 'approved' && !reopened) || resent
   const [selYear, selMonthNum] = selectedMonth.split('-')
   const lastYearLabel = `${formatMonth(`${Number(selYear) - 1}-${selMonthNum}`)}`
 
@@ -268,7 +268,7 @@ export default function MonthlyPage() {
             Informe quanto você faturou em <strong>{lastYearLabel}</strong>. O ranking agora compara o seu faturamento com o mesmo mês do ano anterior.
           </p>
           <p className="text-xs font-body mt-2" style={{ color: `${DARK}80` }}>
-            Confira os dados antes de enviar: depois do envio este mês não poderá mais ser editado.
+            Você pode revisar todos os dados deste mês. Depois do envio ele não poderá mais ser editado; a nota no ranking muda quando a mentora aprovar.
           </p>
         </div>
       )}

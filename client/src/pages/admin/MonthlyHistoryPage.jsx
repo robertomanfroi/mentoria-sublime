@@ -67,11 +67,7 @@ function MonthCell({ cell, onUnapprove, unapproving }) {
 
         {/* Status + comprovante */}
         <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-beige/50">
-          {cell.yoy_status === 'solicitado' && !cell.validated && cell.validation_status !== 2 ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-dark/50">
-              <CalendarClock size={12} strokeWidth={2} /> Aguardando mentorada
-            </span>
-          ) : cell.validated ? (
+          {cell.validated ? (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
               <CheckCircle2 size={12} strokeWidth={2} /> Validado
             </span>
@@ -97,6 +93,12 @@ function MonthCell({ cell, onUnapprove, unapproving }) {
           )}
         </div>
 
+        {cell.yoy_status === 'solicitado' && (
+          <div className="inline-flex items-center gap-1 text-[11px] font-medium text-dark/50">
+            <CalendarClock size={12} strokeWidth={2} /> Falta o ano anterior
+          </div>
+        )}
+
         {/* Botão Desaprovar — só aparece para registros validados */}
         {cell.validated && cell.monthly_data_id && (
           <div className="pt-1">
@@ -120,26 +122,8 @@ export default function MonthlyHistoryPage() {
   const fetchHistory = useCallback(() => adminApi.getMonthlyHistory(), [])
   const { data, loading, error, refetch } = useApi(fetchHistory)
   const [unapprovingId, setUnapprovingId] = useState(null)
-  const [busy, setBusy] = useState(null) // 'reopen' | 'recalc'
+  const [busy, setBusy] = useState(null) // 'recalc'
   const [notice, setNotice] = useState('')
-
-  async function handleReopen() {
-    if (!window.confirm('Reabrir todos os meses já enviados para as mentoradas informarem o faturamento do mesmo mês do ano anterior?\n\nMeses aprovados voltam para pendente e saem do ranking até você aprovar o reenvio.')) return
-    setBusy('reopen')
-    setNotice('')
-    try {
-      const res = await adminApi.reopenLastYearRevenue()
-      const { reopened = 0, approved_reverted = 0 } = res.data || {}
-      setNotice(reopened === 0
-        ? 'Nenhum mês para reabrir — todos já têm o faturamento do ano anterior.'
-        : `✓ ${reopened} mês(es) reabertos (${approved_reverted} estavam aprovados). As mentoradas já podem completar.`)
-      refetch()
-    } catch (err) {
-      setNotice('Erro: ' + (err.response?.data?.error || err.message))
-    } finally {
-      setBusy(null)
-    }
-  }
 
   async function handleRecalcAll() {
     if (!window.confirm('Reprocessar o ranking de todos os meses com a regra atual? O ranking anterior fica guardado no histórico.')) return
@@ -193,14 +177,6 @@ export default function MonthlyHistoryPage() {
         </div>
         <div className="flex flex-col items-start sm:items-end gap-1.5">
           <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={handleReopen}
-              disabled={!!busy}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-beige bg-white px-3 py-2 text-xs font-medium text-dark font-body hover:border-gold disabled:opacity-50"
-            >
-              <CalendarClock size={14} />
-              {busy === 'reopen' ? 'Reabrindo...' : 'Pedir faturamento do ano anterior'}
-            </button>
             <button
               onClick={handleRecalcAll}
               disabled={!!busy}

@@ -24,6 +24,24 @@ function getRevenueTierScore(revenue) {
   return 0;
 }
 
+// Ordena por total_score decrescente (empate → checklist_score) e atribui posições;
+// scores iguais em total e checklist dividem a mesma posição.
+function assignPositions(results) {
+  results.sort((a, b) => {
+    if (b.total_score !== a.total_score) return b.total_score - a.total_score;
+    return b.checklist_score - a.checklist_score;
+  });
+  for (let i = 0; i < results.length; i++) {
+    if (i > 0 && results[i].total_score === results[i - 1].total_score &&
+        results[i].checklist_score === results[i - 1].checklist_score) {
+      results[i].position = results[i - 1].position;
+    } else {
+      results[i].position = i + 1;
+    }
+  }
+  return results;
+}
+
 // Base de comparação do faturamento: mesmo mês do ano anterior; legado cai no mês anterior.
 function getRevenueBase(data) {
   if (data.revenue_last_year !== null && data.revenue_last_year !== undefined) {
@@ -112,23 +130,7 @@ function calculateMonthRanking(allMonthlyData, checklistProgressByUser, weights)
     };
   });
 
-  // Ordenar por total_score decrescente; empate → checklist_score como desempate
-  results.sort((a, b) => {
-    if (b.total_score !== a.total_score) return b.total_score - a.total_score;
-    return b.checklist_score - a.checklist_score;
-  });
-
-  // Atribuir posição com lógica de empate (mesma posição para scores iguais)
-  for (let i = 0; i < results.length; i++) {
-    if (i > 0 && results[i].total_score === results[i - 1].total_score &&
-        results[i].checklist_score === results[i - 1].checklist_score) {
-      results[i].position = results[i - 1].position;
-    } else {
-      results[i].position = i + 1;
-    }
-  }
-
-  return results;
+  return assignPositions(results);
 }
 
-module.exports = { calculateMonthRanking, getRevenueTierScore, getRevenueBase, getRevenueGrowthPct };
+module.exports = { calculateMonthRanking, assignPositions, getRevenueTierScore, getRevenueBase, getRevenueGrowthPct };

@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { prepare, executeTransaction } = require('../../config/database');
-const { calculateMonthRanking, getRevenueGrowthPct } = require('../../utils/rankingCalculator');
+const { calculateMonthRanking, assignPositions, getRevenueGrowthPct } = require('../../utils/rankingCalculator');
 const { buildChecklistProgressMap, invalidateRankingCache } = require('../ranking/ranking.service');
 const { getCurrentMonth } = require('../../utils/formatters');
 
@@ -319,6 +319,14 @@ async function setValidation(id, approved, { reason = null, adminId = null } = {
   // Não recalcula ranking aqui para evitar N recalculações em aprovações individuais.
   // O ranking deve ser recalculado manualmente via POST /admin/ranking/calculate
   // ou automaticamente após approveAllPending.
+  // Exceção: atualização do ano anterior aprovada entra no ranking na hora.
+  if (approved && existing.yoy_status) {
+    try {
+      await calculateAndSaveRanking(existing.month);
+    } catch (e) {
+      console.error('[setValidation] ranking recalc failed:', existing.month, e.message);
+    }
+  }
 
   return prepare('SELECT * FROM monthly_data WHERE id = ?').get(id);
 }
@@ -404,14 +412,25 @@ async function calculateAndSaveRanking(month) {
   `).all(month);
   const userIds = allMonthlyData.map(d => d.user_id);
 
-  if (userIds.length === 0) {
+  // Mês reaberto para o ano anterior e ainda não reaprovado: mantém a nota atual até a aprovação
+  const keptScores = await prepare(`
+    SELECT rs.user_id, rs.checklist_score, rs.revenue_score, rs.followers_score, rs.total_score
+    FROM ranking_snapshots rs
+    JOIN monthly_data md ON md.user_id = rs.user_id AND md.month = rs.month
+    WHERE rs.month = ? AND md.validated_by_admin != 1 AND md.yoy_status IS NOT NULL
+  `).all(month);
+
+  if (userIds.length === 0 && keptScores.length === 0) {
     return { message: 'Nenhum dado encontrado para este mês.', count: 0 };
   }
 
   const checklistProgress = await buildChecklistProgressMap(userIds);
   const settings = await getSettings();
   const weights = settings?.ranking_weights || undefined;
-  const scores = calculateMonthRanking(allMonthlyData, checklistProgress, weights);
+  const scores = assignPositions([
+    ...(userIds.length ? calculateMonthRanking(allMonthlyData, checklistProgress, weights) : []),
+    ...keptScores,
+  ]);
 
   const insertSql = `INSERT INTO ranking_snapshots (user_id, month, checklist_score, revenue_score, followers_score, total_score, position) VALUES (?, ?, ?, ?, ?, ?, ?)`;
   // Arquiva o snapshot atual antes de substituí-lo — preserva o histórico de scores da época
@@ -433,14 +452,13 @@ async function calculateAndSaveRanking(month) {
 }
 
 /**
- * Reabre todos os meses enviados que ainda não têm o faturamento do ano anterior.
- * - Aprovados voltam a pendente (auditado) e saem do ranking até a reaprovação.
- * - Nota de checklist do ranking atual é congelada no registro.
- * - Rejeitados/pendentes seguem editáveis e ficam marcados como 'solicitado'.
+ * Reabre para edição todos os meses enviados que ainda não têm o faturamento do ano anterior.
+ * Nada é apagado e o status de validação não muda: o mês continua no ranking com a nota
+ * atual até a admin aprovar a atualização. A nota de checklist atual fica congelada.
  */
 async function reopenForLastYearRevenue(adminId = null) {
   const targets = await prepare(`
-    SELECT md.id, md.user_id, md.month, md.validated_by_admin
+    SELECT md.id, md.month
     FROM monthly_data md
     JOIN users u ON u.id = md.user_id AND u.role = 'mentorada' AND u.deleted_at IS NULL
     WHERE md.yoy_status IS NULL AND md.revenue_last_year IS NULL
@@ -450,8 +468,6 @@ async function reopenForLastYearRevenue(adminId = null) {
 
   const ids = targets.map(t => t.id);
   const ph = ids.map(() => '?').join(',');
-  const reason = 'Reaberto para informar o faturamento do ano anterior';
-  const approved = targets.filter(t => t.validated_by_admin === 1);
   const months = [...new Set(targets.map(t => t.month))].sort();
 
   await executeTransaction([
@@ -460,41 +476,20 @@ async function reopenForLastYearRevenue(adminId = null) {
               SELECT rs.checklist_score FROM ranking_snapshots rs
               WHERE rs.user_id = monthly_data.user_id AND rs.month = monthly_data.month)
             WHERE id IN (${ph}) AND checklist_score_frozen IS NULL`, args: ids },
-    // Auditoria aprovado → pendente
-    ...approved.map(t => ({
-      sql: `INSERT INTO validation_audit (monthly_data_id, user_id, month, previous_status, new_status, previous_reason, new_reason, admin_id)
-            VALUES (?, ?, ?, 1, 0, NULL, ?, ?)`,
-      args: [t.id, t.user_id, t.month, reason, adminId],
-    })),
-    // Arquiva e remove o snapshot de ranking de quem foi reaberto
-    { sql: `INSERT INTO ranking_snapshots_history (user_id, month, checklist_score, revenue_score, followers_score, total_score, position)
-            SELECT rs.user_id, rs.month, rs.checklist_score, rs.revenue_score, rs.followers_score, rs.total_score, rs.position
-            FROM ranking_snapshots rs JOIN monthly_data md ON md.user_id = rs.user_id AND md.month = rs.month
-            WHERE md.id IN (${ph})`, args: ids },
-    { sql: `DELETE FROM ranking_snapshots WHERE EXISTS (
-              SELECT 1 FROM monthly_data md WHERE md.user_id = ranking_snapshots.user_id
-              AND md.month = ranking_snapshots.month AND md.id IN (${ph}))`, args: ids },
-    { sql: `UPDATE monthly_data SET
-              yoy_status = 'solicitado',
-              validated_by_admin = CASE WHEN validated_by_admin = 1 THEN 0 ELSE validated_by_admin END,
-              validated_at = CASE WHEN validated_by_admin = 1 THEN NULL ELSE validated_at END,
-              validated_by = CASE WHEN validated_by_admin = 1 THEN NULL ELSE validated_by END,
-              updated_at = CURRENT_TIMESTAMP
-            WHERE id IN (${ph})`, args: ids },
+    { sql: `UPDATE monthly_data SET yoy_status = 'solicitado', updated_at = CURRENT_TIMESTAMP WHERE id IN (${ph})`, args: ids },
   ]);
 
-  // Reposiciona quem continua no ranking de cada mês afetado
-  for (const month of months) {
-    invalidateRankingCache(month);
-    try {
-      await calculateAndSaveRanking(month);
-    } catch (e) {
-      console.error('[reopen] ranking recalc failed:', month, e.message);
-    }
-  }
+  console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'reopen_last_year_revenue', userId: adminId, details: { reopened: targets.length, months } }));
+  return { reopened: targets.length, months };
+}
 
-  console.log(JSON.stringify({ timestamp: new Date().toISOString(), action: 'reopen_last_year_revenue', userId: adminId, details: { reopened: targets.length, approved_reverted: approved.length, months } }));
-  return { reopened: targets.length, approved_reverted: approved.length, months };
+/** Reabertura automática, uma única vez por banco (marcada em app_settings). */
+async function reopenForLastYearRevenueOnce() {
+  const done = await prepare("SELECT value FROM app_settings WHERE key = 'yoy_reopen_done'").get();
+  if (done) return null;
+  const result = await reopenForLastYearRevenue(null);
+  await prepare("INSERT INTO app_settings (key, value) VALUES ('yoy_reopen_done', ?)").run(new Date().toISOString());
+  return result;
 }
 
 /** Recalcula o ranking de todos os meses com dados. */
@@ -503,7 +498,9 @@ async function recalculateAllRankings() {
   const results = [];
   for (const { month } of rows) {
     // Mês sem nenhum aprovado: limpa snapshots remanescentes (arquivando antes)
-    const validated = await prepare('SELECT COUNT(*) as cnt FROM monthly_data WHERE month = ? AND validated_by_admin = 1').get(month);
+    const validated = await prepare(
+      'SELECT COUNT(*) as cnt FROM monthly_data WHERE month = ? AND (validated_by_admin = 1 OR yoy_status IS NOT NULL)'
+    ).get(month);
     if (validated.cnt === 0) {
       await executeTransaction([
         { sql: `INSERT INTO ranking_snapshots_history (user_id, month, checklist_score, revenue_score, followers_score, total_score, position)
@@ -664,7 +661,7 @@ module.exports = {
   listChecklistItems, addChecklistItem, updateChecklistItem, deleteChecklistItem,
   listPendingValidations, setValidation, approveAllPending, unapproveValidation,
   listAllPrizes, updatePrize,
-  calculateAndSaveRanking, reopenForLastYearRevenue, recalculateAllRankings,
+  calculateAndSaveRanking, reopenForLastYearRevenue, reopenForLastYearRevenueOnce, recalculateAllRankings,
   exportCSV,
   getSettings, updateSettings,
   getMonthDiagnostic, getMonthlyHistory,

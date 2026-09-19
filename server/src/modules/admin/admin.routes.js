@@ -41,7 +41,6 @@ router.put('/prizes/:id', adminController.updatePrize);
 // Ranking
 router.post('/ranking/calculate', adminController.calculateRanking);
 router.post('/ranking/recalculate-all', adminController.recalculateAllRankings);
-router.post('/monthly/reopen-last-year', adminController.reopenForLastYearRevenue);
 router.get('/diagnostic', adminController.getMonthDiagnostic);
 router.get('/monthly-history', adminController.getMonthlyHistory);
 

@@ -19,6 +19,7 @@ function sameMonthLastYear(month) {
 // Travado quando aprovado, ou quando já reenviado após a reabertura do ano anterior
 function lockMessage(row) {
   if (!row) return null;
+  if (row.yoy_status === 'solicitado') return null; // reaberto: pode editar tudo
   if (row.validated_by_admin === 1) {
     return 'Este mês já foi validado pela mentora e não pode mais ser alterado. Fale com o suporte se precisar corrigir.';
   }
