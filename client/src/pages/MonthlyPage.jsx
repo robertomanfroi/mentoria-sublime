@@ -179,11 +179,16 @@ export default function MonthlyPage() {
   const status     = submission?.validated_by_admin === 1 ? 'approved'
                    : submission?.validated_by_admin === 2 ? 'rejected'
                    : submission ? 'pending' : null
-  const statusInfo = statusConfig[status] || null
   const reopened   = submission?.yoy_status === 'solicitado'
   const resent     = status === 'pending' && submission?.yoy_status === 'enviado'
   const openForCorrection = reopened || resent
   const locked     = status === 'approved' && !reopened
+  // Mês reaberto mostra que está aberto, nunca o selo de validado — mesma regra do histórico
+  const statusInfo = reopened
+    ? (submission?.revenue_last_year == null
+        ? { variant: 'warning', label: 'Completar ano anterior' }
+        : { variant: 'warning', label: 'Aberto para correção' })
+    : statusConfig[status] || null
   const [selYear, selMonthNum] = selectedMonth.split('-')
   const lastYearLabel = `${formatMonth(`${Number(selYear) - 1}-${selMonthNum}`)}`
   const capitalize = txt => (txt ? txt.charAt(0).toUpperCase() + txt.slice(1) : txt)
