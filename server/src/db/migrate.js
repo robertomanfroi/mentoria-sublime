@@ -130,11 +130,21 @@ async function reopenAllForCorrectionOnce() {
   if (result) console.log(`[migrate] Meses reabertos para correção: ${result.reopened}`);
 }
 
+// 2º e 3º lugar passam a exibir "Prêmio Surpresa" — não toca em títulos já personalizados
+async function nameSurprisePrizes() {
+  const result = await prepare(
+    `UPDATE prizes SET title = 'Prêmio Surpresa'
+     WHERE position IN (2, 3) AND (title IS NULL OR TRIM(title) = '' OR TRIM(title) = 'A definir')`
+  ).run();
+  if (result.changes > 0) console.log(`[migrate] Prêmios 2º/3º nomeados como Prêmio Surpresa: ${result.changes}`);
+}
+
 async function migrate() {
   await runMigrations();
   await normalizeInstagramHandles();
   await seedChecklistItems();
   await seedPrizes();
+  await nameSurprisePrizes();
   await seedAdminUser();
   await seedSampleMentoradas();
   await reopenLastYearRevenueOnce();
