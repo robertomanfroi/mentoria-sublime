@@ -130,13 +130,22 @@ async function reopenAllForCorrectionOnce() {
   if (result) console.log(`[migrate] Meses reabertos para correção: ${result.reopened}`);
 }
 
-// 2º e 3º lugar passam a exibir "Prêmio Surpresa" — não toca em títulos já personalizados
-async function nameSurprisePrizes() {
-  const result = await prepare(
-    `UPDATE prizes SET title = 'Prêmio Surpresa'
-     WHERE position IN (2, 3) AND (title IS NULL OR TRIM(title) = '' OR TRIM(title) = 'A definir')`
-  ).run();
-  if (result.changes > 0) console.log(`[migrate] Prêmios 2º/3º nomeados como Prêmio Surpresa: ${result.changes}`);
+// 2º e 3º lugar passam a exibir "Prêmio Surpresa". Roda uma única vez: um título
+// definido depois pelo painel da mentora não é desfeito nos deploys seguintes.
+async function nameSurprisePrizesOnce() {
+  const done = await prepare("SELECT value FROM app_settings WHERE key = 'surprise_prizes_done'").get();
+  if (done) return;
+
+  for (const position of [2, 3]) {
+    const result = await prepare(
+      "UPDATE prizes SET title = 'Prêmio Surpresa', active = 1 WHERE position = ?"
+    ).run(position);
+    if (result.changes === 0) {
+      await prepare("INSERT INTO prizes (position, title, description, active) VALUES (?, 'Prêmio Surpresa', '', 1)").run(position);
+    }
+  }
+  await prepare("INSERT INTO app_settings (key, value) VALUES ('surprise_prizes_done', ?)").run(new Date().toISOString());
+  console.log('[migrate] Prêmios do 2º e 3º lugar definidos como "Prêmio Surpresa".');
 }
 
 async function migrate() {
@@ -144,7 +153,7 @@ async function migrate() {
   await normalizeInstagramHandles();
   await seedChecklistItems();
   await seedPrizes();
-  await nameSurprisePrizes();
+  await nameSurprisePrizesOnce();
   await seedAdminUser();
   await seedSampleMentoradas();
   await reopenLastYearRevenueOnce();
