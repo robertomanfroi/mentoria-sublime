@@ -216,6 +216,12 @@ export default function RankingPage() {
           >
             Ranking Geral — Média de todos os meses
           </p>
+          <p
+            className="font-body text-center mt-1.5"
+            style={{ fontSize: '11px', color: `${MID}80` }}
+          >
+            Quanto mais meses preenchidos, mais a sua média pesa na pontuação.
+          </p>
         </div>
       )}
 

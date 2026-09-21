@@ -201,6 +201,16 @@ function monthsInPeriod(firstMonth, referenceMonth) {
   return monthIndex(referenceMonth) - monthIndex(firstMonth) + 1;
 }
 
+// Peso de confiança do ranking geral: quantos meses de histórico valem "meia confiança".
+// Com k = 3, um mês conta 25% do próprio score, 3 meses 50%, 6 meses 67%, 10 meses 77% —
+// o restante é ancorado na média da turma. Evita que um único mês excelente lidere o geral.
+const CONFIDENCE_K = 3;
+
+function applyConfidence(avgScore, monthsCount, anchor) {
+  const weight = monthsCount / (monthsCount + CONFIDENCE_K);
+  return avgScore * weight + anchor * (1 - weight);
+}
+
 async function getGeneralRanking() {
   const cached = getCached('ranking-geral');
   if (cached) return cached;
@@ -266,11 +276,22 @@ async function getGeneralRanking() {
     });
   }
 
-  result.sort((a, b) => (b.avg_score - a.avg_score) || (b.months_count - a.months_count));
+  // Âncora: média da turma. Quem tem pouco histórico é puxada para ela até acumular meses.
+  const anchor = result.length
+    ? result.reduce((acc, r) => acc + r.avg_score, 0) / result.length
+    : 0;
+
+  for (const r of result) {
+    r.raw_avg_score = r.avg_score;
+    r.confidence_weight = Math.round((r.months_count / (r.months_count + CONFIDENCE_K)) * 100) / 100;
+    r.adjusted_score = Math.round(applyConfidence(r.avg_score, r.months_count, anchor) * 100) / 100;
+  }
+
+  result.sort((a, b) => (b.adjusted_score - a.adjusted_score) || (b.months_count - a.months_count));
   result.forEach((r, i) => {
     r.position = i + 1;
     r.checklist_score = r.avg_checklist; // alias para StarGroup
-    r.total_score = r.avg_score; // alias para compatibilidade com componentes
+    r.total_score = r.adjusted_score; // pontuação exibida já com o peso de histórico
   });
 
   setCache('ranking-geral', result);
