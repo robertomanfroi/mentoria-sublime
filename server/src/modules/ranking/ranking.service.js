@@ -24,6 +24,30 @@ function invalidateRankingCache(month) {
   rankingCache.delete('ranking-geral');
 }
 
+// Dados aprovados de um mês, já com o "seguidores do mês anterior" recuperado do histórico
+// quando a mentorada não preencheu o campo: o valor é o que ela mesma registrou no mês
+// imediatamente anterior. Só o mês exatamente anterior conta — lacuna não vira crescimento inflado.
+const VALIDATED_MONTH_SQL = `
+  SELECT md.*, (
+    SELECT p.followers_count FROM monthly_data p
+    WHERE p.user_id = md.user_id
+      AND p.month = strftime('%Y-%m', md.month || '-01', '-1 month')
+      AND p.followers_count IS NOT NULL
+  ) AS followers_previous_from_history
+  FROM monthly_data md
+  JOIN users u ON u.id = md.user_id AND u.role != 'admin'
+  WHERE md.month = ? AND md.validated_by_admin = 1
+  ORDER BY md.created_at ASC`;
+
+async function getValidatedMonthlyData(month) {
+  const rows = await prepare(VALIDATED_MONTH_SQL).all(month);
+  return rows.map(r => ({
+    ...r,
+    // O que ela informou tem prioridade; o histórico só cobre o campo vazio
+    followers_previous: r.followers_previous ?? r.followers_previous_from_history ?? null,
+  }));
+}
+
 async function buildChecklistProgressMap(userIds) {
   const totalRow = await prepare('SELECT COUNT(*) as cnt FROM checklist_items WHERE active = 1').get();
   const total = totalRow.cnt;
@@ -101,12 +125,7 @@ async function getRankingForMonth(month, { page = 1, limit = 100 } = {}) {
     return { data: result.slice(offset2, offset2 + safeLimit2), total: total2, page: safePage2, totalPages: totalPages2 };
   }
 
-  const allMonthlyData = await prepare(`
-    SELECT md.* FROM monthly_data md
-    JOIN users u ON u.id = md.user_id AND u.role != 'admin'
-    WHERE md.month = ? AND md.validated_by_admin = 1
-    ORDER BY md.created_at ASC
-  `).all(month);
+  const allMonthlyData = await getValidatedMonthlyData(month);
   const userIds = allMonthlyData.map(d => d.user_id);
   if (userIds.length === 0) {
     return { data: [], total: 0, page: 1, totalPages: 0 };
@@ -298,4 +317,4 @@ async function getGeneralRanking() {
   return { data: result, total: result.length };
 }
 
-module.exports = { getRankingForMonth, getGeneralRanking, getMyPosition, buildChecklistProgressMap, invalidateRankingCache };
+module.exports = { getRankingForMonth, getGeneralRanking, getMyPosition, buildChecklistProgressMap, getValidatedMonthlyData, invalidateRankingCache };

@@ -87,7 +87,9 @@ export default function MonthlyPage() {
   useEffect(() => {
     if (monthData && !monthData.error) {
       setFollowersCurrent(String(monthData.followers_count || ''))
-      setFollowersPrevious(String(monthData.followers_previous || ''))
+      // Se ela não informou, sugere o total que ela registrou no mês anterior
+      const prevFollowers = monthData.followers_previous ?? monthData.followers_previous_suggestion
+      setFollowersPrevious(prevFollowers == null ? '' : String(prevFollowers))
       setRevenueCurrent(String(monthData.revenue || ''))
       // Valor já informado; senão, sugere o faturamento que ela registrou no mesmo mês do ano anterior
       const lastYear = monthData.revenue_last_year ?? monthData.revenue_last_year_suggestion

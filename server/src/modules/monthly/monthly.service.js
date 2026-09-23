@@ -36,6 +36,12 @@ function sameMonthLastYear(month) {
   return `${Number(y) - 1}-${m}`;
 }
 
+// Mês imediatamente anterior: "2026-01" → "2025-12"
+function previousMonth(month) {
+  const [y, m] = month.split('-').map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+}
+
 // Trava só na aprovação: enquanto a mentora não validar, a mentorada corrige quantas vezes precisar
 function lockMessage(row) {
   if (!row) return null;
@@ -69,8 +75,17 @@ async function getByMonth(userId, month) {
   ).get(userId, sameMonthLastYear(month));
   const suggestion = lastYear ? lastYear.revenue : null;
 
-  if (!row) return suggestion !== null ? { revenue_last_year_suggestion: suggestion } : null;
-  return { ...row, revenue_last_year_suggestion: suggestion };
+  // Sugestão de seguidores do mês anterior: o total que ela mesma registrou no mês passado
+  const prevMonthRow = await prepare(
+    'SELECT followers_count FROM monthly_data WHERE user_id = ? AND month = ? AND followers_count IS NOT NULL'
+  ).get(userId, previousMonth(month));
+  const followersSuggestion = prevMonthRow ? prevMonthRow.followers_count : null;
+
+  if (!row) {
+    if (suggestion === null && followersSuggestion === null) return null;
+    return { revenue_last_year_suggestion: suggestion, followers_previous_suggestion: followersSuggestion };
+  }
+  return { ...row, revenue_last_year_suggestion: suggestion, followers_previous_suggestion: followersSuggestion };
 }
 
 function validateNumbers(data) {

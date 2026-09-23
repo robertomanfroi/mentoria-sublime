@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { prepare, executeTransaction } = require('../../config/database');
 const { FIRST_MONTH, calculateMonthRanking, assignPositions, getRevenueGrowthPct } = require('../../utils/rankingCalculator');
-const { buildChecklistProgressMap, invalidateRankingCache } = require('../ranking/ranking.service');
+const { buildChecklistProgressMap, getValidatedMonthlyData, invalidateRankingCache } = require('../ranking/ranking.service');
 const { getCurrentMonth } = require('../../utils/formatters');
 
 // Lock simples para evitar cálculos de ranking simultâneos para o mesmo mês
@@ -409,11 +409,7 @@ async function calculateAndSaveRanking(month) {
   rankingLocks.set(month, true);
 
   try {
-  const allMonthlyData = await prepare(`
-    SELECT md.* FROM monthly_data md
-    JOIN users u ON u.id = md.user_id AND u.role != 'admin'
-    WHERE md.month = ? AND md.validated_by_admin = 1
-  `).all(month);
+  const allMonthlyData = await getValidatedMonthlyData(month);
   const userIds = allMonthlyData.map(d => d.user_id);
 
   // Mês reaberto para o ano anterior e ainda não reaprovado: mantém a nota atual até a aprovação
