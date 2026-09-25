@@ -111,7 +111,8 @@ function RankingList({ entries, user, emptyLabel }) {
 
 export default function RankingPage() {
   const { user } = useAuth()
-  const [tab, setTab] = useState('month')
+  // Só o ranking geral fica visível na plataforma; o mensal segue no admin
+  const [tab] = useState('general')
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
 
   const monthFn   = useCallback(() => rankingApi.getRanking(selectedMonth), [selectedMonth])
@@ -145,30 +146,6 @@ export default function RankingPage() {
           Ranking
         </h1>
         <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${GOLD}40, transparent)` }} />
-      </div>
-
-      {/* ── Abas Geral / Do Mês ─────────────────────────────────────── */}
-      <div
-        className="flex rounded-xl p-1 gap-1"
-        style={{ background: CREAM, border: `1px solid ${BEIGE}` }}
-      >
-        {[
-          { key: 'general', label: 'Geral' },
-          { key: 'month',   label: 'Do Mês' },
-        ].map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className="flex-1 py-2 rounded-lg text-sm font-body font-medium transition-all"
-            style={
-              tab === t.key
-                ? { background: '#fff', color: BROWN, boxShadow: '0 1px 4px rgba(61,40,28,0.10)' }
-                : { color: `${MID}80` }
-            }
-          >
-            {t.label}
-          </button>
-        ))}
       </div>
 
       {/* ── Seletor de mês (só na aba Do Mês) ──────────────────────── */}
