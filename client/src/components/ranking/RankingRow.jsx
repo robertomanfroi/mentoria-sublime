@@ -1,15 +1,10 @@
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import Avatar from '../ui/Avatar'
 import { RankBadge } from '../ui/Badge'
 import { StarGroup } from '../ui/StarRating'
 
 export default function RankingRow({ entry, position, isCurrentUser = false }) {
-  const growthPct = entry.revenue_growth_pct ?? entry.followers_gained ?? 0
   const gained = entry.followers_gained ?? 0
-
-  const GrowthIcon = growthPct > 0 ? TrendingUp : growthPct < 0 ? TrendingDown : Minus
-  const growthColor = growthPct > 0 ? 'text-sage' : growthPct < 0 ? 'text-red-400' : 'text-dark/40'
 
   return (
     <div
@@ -53,14 +48,6 @@ export default function RankingRow({ entry, position, isCurrentUser = false }) {
             @{entry.instagram_handle}
           </p>
         )}
-      </div>
-
-      {/* Crescimento seguidores */}
-      <div className="hidden sm:flex items-center gap-1 min-w-[80px] justify-end">
-        <GrowthIcon size={13} className={growthColor} />
-        <span className={cn('text-xs font-body font-medium', growthColor)}>
-          {gained > 0 ? '+' : ''}{gained.toLocaleString('pt-BR')}
-        </span>
       </div>
 
       {/* Estrelas */}
