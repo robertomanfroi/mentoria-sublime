@@ -36,7 +36,7 @@ const VALIDATED_MONTH_SQL = `
   ) AS followers_previous_from_history
   FROM monthly_data md
   JOIN users u ON u.id = md.user_id AND u.role != 'admin'
-  WHERE md.month = ? AND md.validated_by_admin = 1
+  WHERE md.month = ? AND md.validated_by_admin = 1 AND COALESCE(md.excluded_from_ranking, 0) = 0
   ORDER BY md.created_at ASC`;
 
 async function getValidatedMonthlyData(month) {
@@ -254,7 +254,7 @@ async function getGeneralRanking() {
     SELECT user_id,
            SUM(COALESCE(followers_count, 0) - COALESCE(followers_previous, 0)) AS followers_gained
     FROM monthly_data
-    WHERE validated_by_admin = 1 AND month >= ?
+    WHERE validated_by_admin = 1 AND COALESCE(excluded_from_ranking, 0) = 0 AND month >= ?
     GROUP BY user_id
   `).all(FIRST_MONTH);
   const followersGainedByUser = new Map(followersRows.map((r) => [r.user_id, r.followers_gained || 0]));
